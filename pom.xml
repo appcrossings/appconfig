@@ -9,11 +9,11 @@
 		<url>https://github.com/appcrossings/appconfig-client</url>
 		<connection>scm:git:https://github.com/appcrossings/appconfig-client</connection>
 		<developerConnection>scm:git:https://github.com/appcrossings/appconfig-client</developerConnection>
-	</scm>	
+	</scm>
 	<dependencies>
 		<dependency>
 			<groupId>commons-beanutils</groupId>
-			<artifactId>commons-beanutils</artifactId>			
+			<artifactId>commons-beanutils</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.jasypt</groupId>
@@ -21,28 +21,20 @@
 			<version>1.9.2</version>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-aspects</artifactId>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.6</version>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-test</artifactId>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
 			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>javax.servlet</groupId>
-			<artifactId>javax.servlet-api</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-context-support</artifactId>
 		</dependency>
 	</dependencies>
 	<parent>
 		<groupId>com.appcrossings.config</groupId>
 		<artifactId>appconfig-pom</artifactId>
-		<version>1.0.1</version>
+		<version>2.0.0</version>
 	</parent>
-	<version>1.1.0</version>
+	<version>2.0.0</version>
 </project>
