@@ -1,6 +1,5 @@
 package com.appcrossings.config.file;
 
-import java.io.File;
 import java.util.Properties;
 
 import org.apache.commons.io.FileUtils;
@@ -26,14 +25,15 @@ public class TestLoadProperties {
 	@Before
 	public void before() throws Exception {
 		folder.create();
-		System.out.println(folder.getRoot().toPath());
+		System.out.println("from: " + FileUtils.toFile(this.getClass().getResource("/env")));
+		System.out.println("to: " + folder.getRoot().toPath());
 		FileUtils.copyDirectory(FileUtils.toFile(this.getClass().getResource("/")), folder.getRoot());
 		source = ConfigSourceFactory.buildConfigSource(ConfigSourceFactory.FILE_SYSTEM);
 	}
-	
+
 	@After
 	public void cleanup() throws Exception {
-		folder.delete();
+		FileUtils.forceDelete(folder.getRoot());
 	}
 
 	@Test
@@ -49,7 +49,8 @@ public class TestLoadProperties {
 	@Test
 	public void loadFileProperties() throws Exception {
 
-		Properties p = source.loadProperties("file:" + folder.getRoot().toPath() + "/env/dev/", ConfigClient.DEFAULT_PROPERTIES_FILE_NAME);
+		Properties p = source.loadProperties("file:/" + folder.getRoot() + "/env/dev/",
+				ConfigClient.DEFAULT_PROPERTIES_FILE_NAME);
 		Assert.assertNotNull(p);
 		Assert.assertTrue(p.containsKey("property.1.name"));
 		Assert.assertEquals(p.getProperty("property.1.name"), "value1");
@@ -67,9 +68,9 @@ public class TestLoadProperties {
 	}
 
 	@Test
-	public void loadAbsoluteFile() throws Exception {		
-		
-		Properties p = source.loadProperties("/env/dev/", ConfigClient.DEFAULT_PROPERTIES_FILE_NAME);
+	public void loadAbsoluteFile() throws Exception {
+
+		Properties p = source.loadProperties(folder.getRoot() + "/env/dev/", ConfigClient.DEFAULT_PROPERTIES_FILE_NAME);
 		Assert.assertNotNull(p);
 		Assert.assertTrue(p.containsKey("property.1.name"));
 		Assert.assertEquals(p.getProperty("property.1.name"), "value1");

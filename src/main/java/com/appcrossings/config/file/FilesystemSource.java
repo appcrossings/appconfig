@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,12 +14,9 @@ import java.util.Properties;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.core.io.Resource;
-import org.springframework.util.StringUtils;
 
 import com.appcrossings.config.ConfigSource;
-import com.google.common.base.Throwables;
+import com.appcrossings.config.StringUtils;
 
 public class FilesystemSource implements ConfigSource {
 
@@ -28,70 +26,81 @@ public class FilesystemSource implements ConfigSource {
 
 	private final static Logger log = LoggerFactory.getLogger(FilesystemSource.class);
 
+	private InputStream getFileStream(String fullPath) throws FileNotFoundException, IOException {
+
+		InputStream stream = null;
+
+		if (isURL(fullPath)) {
+
+			stream = new URL(fullPath).openStream();
+
+		} else if (isFile(fullPath)) {
+
+			String trimmed = fullPath.replaceFirst("file:", "");
+			stream = new FileInputStream(new File(trimmed));
+
+		} else if (isClasspath(fullPath)) {
+
+			String trimmed = fullPath.replaceFirst("classpath:", "");
+			stream = this.getClass().getResourceAsStream(trimmed);
+
+		} else if (isPath(fullPath)) {
+
+			// could be relative to classpath or filesystem root (i.e. linux)
+
+			stream = this.getClass().getResourceAsStream(fullPath);
+
+			if (stream == null)
+				stream = new FileInputStream(new File(fullPath));
+
+		}
+
+		if (stream != null) {
+			log.info("Found " + fullPath);
+		} else {
+			log.info("Not found.");
+			throw new FileNotFoundException(fullPath);
+		}
+
+		return stream;
+
+	}
+
 	protected Properties fetchProperties(String propertiesPath, String propertiesFileName) {
 
 		Properties p = new Properties();
-		final String fullPath = propertiesPath + "/" + propertiesFileName;
 
-		InputStream stream = null;
-		try {
+		String fullPath = "";
+
+		if (!propertiesPath.endsWith(File.separator) && !propertiesFileName.startsWith(File.separator))
+			fullPath = propertiesPath + "/" + propertiesFileName;
+		else
+			fullPath = propertiesPath + propertiesFileName;
+
+		try (InputStream stream = getFileStream(fullPath);) {
 
 			log.info("Attempting " + fullPath);
-			if (isURL(fullPath)) {
+			p.load(stream);
 
-				stream = new URL(fullPath).openStream();
+		} catch (FileNotFoundException e) {
 
-			} else if (isFile(fullPath)) {
-
-				stream = new FileInputStream(new File(fullPath));
-
-			} else if (isClasspath(fullPath)) {
-
-				String trimmed = fullPath.replaceFirst("classpath:", "");
-				stream = this.getClass().getResourceAsStream(trimmed);
-
-			} else if (isPath(fullPath)) {
-
-				// could be relative to classpath or filesystem root (i.e. linux)
-
-				stream = this.getClass().getResourceAsStream(fullPath);
-
-				if (stream == null)
-					stream = new FileInputStream(new File(fullPath));
-
-			}
-
-			if (stream != null) {
-				log.info("Found " + fullPath);
-				p.load(stream);
-			} else {
-				log.info("Not found. Retrying...");
-				throw new FileNotFoundException(fullPath);
-			}
+			log.info("Not found.");
 
 		} catch (IOException e) {
-
-			log.info("Not found. Retrying...");
-
-		} finally {
-			try {
-				if (stream != null)
-					stream.close();
-			} catch (Exception e) {
-				// nothing
-			}
+			log.error(e.getMessage(), e);
+			throw new RuntimeException(e);
 		}
 
 		return p;
 	}
 
-	protected Properties downloadFile(Resource resource) {
+	protected Properties downloadFile(URL resource) {
 
 		Properties p = new Properties();
 		Throwable ex = null;
 		for (int retry = 0; retry < 3; retry++) {
 
-			try (InputStream stream2 = resource.getInputStream()) {
+			try (InputStream stream2 = resource.openStream()) {
 
 				p.load(stream2);
 				break;
@@ -111,7 +120,7 @@ public class FilesystemSource implements ConfigSource {
 			// path anyway
 
 		} else if (ex != null) {
-			Throwables.propagate(ex);
+			throw new RuntimeException(ex);
 		}
 
 		return p;
@@ -122,31 +131,16 @@ public class FilesystemSource implements ConfigSource {
 
 		log.info("Fetching hosts file from path: " + hostsFile);
 
-		Resource resource = new DefaultResourceLoader().getResource(hostsFile);
-
-		boolean exists = false;
-		for (int retry = 0; retry < 3; retry++) {
-			if (resource.exists()) {
-				exists = true;
-				break;
-			}
-
-			log.info("Not found. Retrying...");
-		}
-
-		if (!exists) {
-			throw new IllegalArgumentException(
-					"Properties file " + hostsFile + " couldn't be found at location " + hostsFile);
-		}
-
 		Properties hosts = new Properties();
 
-		try (InputStream stream = resource.getInputStream()) {
+		try (InputStream stream = getFileStream(hostsFile)) {
 
 			hosts.load(stream);
 
 		} catch (IOException e) {
 			log.error("Can't load hosts file", e);
+		} finally {
+
 		}
 
 		return hosts;
@@ -176,11 +170,11 @@ public class FilesystemSource implements ConfigSource {
 		Collections.reverse(all); // sort from root to highest
 
 		Properties ps = new Properties();
-		
-		for(Properties p : all) {
+
+		for (Properties p : all) {
 			ps.putAll(p);
 		}
-		
+
 		return ps;
 
 	}
@@ -209,7 +203,10 @@ public class FilesystemSource implements ConfigSource {
 	}
 
 	protected boolean isPath(String path) {
-		return path.trim().startsWith(File.pathSeparator);
+		URI uri = URI.create(path);
+		uri.getScheme();
+		
+		return path.trim().startsWith(File.separator);
 	}
 
 }

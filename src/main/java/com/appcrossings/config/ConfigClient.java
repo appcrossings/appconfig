@@ -1,18 +1,19 @@
 package com.appcrossings.config;
 
+import java.util.Map;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.beanutils.ConvertUtilsBean;
+import org.apache.commons.collections.map.HashedMap;
+import org.apache.commons.lang3.text.StrSubstitutor;
 import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
 import org.jasypt.encryption.pbe.config.EnvironmentStringPBEConfig;
 import org.jasypt.properties.EncryptableProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.PropertyPlaceholderHelper;
-import org.springframework.util.StringUtils;
 
 /**
  * 
@@ -43,6 +44,8 @@ public class ConfigClient {
 
 	protected ConfigSource configSource;
 
+	protected AtomicReference<StrSubstitutor> sub = new AtomicReference<>(new StrSubstitutor());
+
 	private class ReloadTask extends TimerTask {
 
 		@Override
@@ -68,8 +71,6 @@ public class ConfigClient {
 
 	protected EnvironmentUtil envUtil = new EnvironmentUtil();
 
-	private PropertyPlaceholderHelper helper;
-
 	protected final String hostsFilePath;
 
 	private final AtomicReference<Properties> loadedProperties = new AtomicReference<>();
@@ -87,8 +88,6 @@ public class ConfigClient {
 	 * @throws Exception
 	 */
 	public ConfigClient(String path) throws Exception {
-		helper = new PropertyPlaceholderHelper(this.placeholderPrefix, this.placeholderSuffix, this.valueSeparator,
-				this.ignoreUnresolvablePlaceholders);
 		this.hostsFilePath = path;
 	}
 
@@ -110,7 +109,8 @@ public class ConfigClient {
 
 		String property;
 		try {
-			property = helper.replacePlaceholders(placeholderPrefix + key + placeholderSuffix, loadedProperties.get());
+
+			property = sub.get().replace(placeholderPrefix + key + placeholderSuffix);
 
 			if (property.equals(key))
 				return null;
@@ -154,17 +154,17 @@ public class ConfigClient {
 		String startPath = hosts.getProperty(hostName);
 
 		// Attempt environment as a backup
-		if (!StringUtils.hasText(startPath) && StringUtils.hasText(environmentName)) {
+		if (StringUtils.hasText(startPath) && StringUtils.hasText(environmentName)) {
 
 			startPath = hosts.getProperty(environmentName);
 
-		} else if (!StringUtils.hasText(startPath)) {
+		} else if (StringUtils.hasText(startPath)) {
 
 			startPath = hosts.getProperty("*");// catch all
 
 		}
 
-		if (StringUtils.hasText(startPath)) {
+		if (startPath != null && !startPath.trim().equals("")) {
 
 			logger.debug("Searching for properties beginning at: " + startPath);
 
@@ -184,6 +184,10 @@ public class ConfigClient {
 		} else {
 			logger.warn("Counldn't find any properties for host " + hostName + " or environment " + environmentName);
 		}
+
+		Map<String, String> vals = new HashedMap();
+		loadedProperties.get().forEach((k, v) -> vals.put((String) k, (String) v));
+		sub.set(new StrSubstitutor(vals));
 	}
 
 	public void reload() {

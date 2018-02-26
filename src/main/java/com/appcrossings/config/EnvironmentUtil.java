@@ -5,9 +5,6 @@ import java.net.UnknownHostException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.StringUtils;
-
-import com.google.common.base.Throwables;
 
 public class EnvironmentUtil {
 
@@ -24,7 +21,7 @@ public class EnvironmentUtil {
 
 		String env = this.environmentName; // initialize to configured environment
 
-		if (StringUtils.isEmpty(env)) {
+		if (StringUtils.hasText(env)) {
 
 			env = StringUtils.hasText(env) ? env : System.getProperty("env");
 			env = StringUtils.hasText(env) ? env : System.getProperty("ENV");
@@ -53,7 +50,7 @@ public class EnvironmentUtil {
 
 		String hostName = this.hostName; // initialize to configured host name
 
-		if (StringUtils.isEmpty(hostName)) {
+		if (StringUtils.hasText(hostName)) {
 
 			try {
 
@@ -75,7 +72,7 @@ public class EnvironmentUtil {
 
 			} catch (UnknownHostException ex) {
 				log.error("Can't resolve hostname", ex);
-				Throwables.propagate(ex);
+				throw new RuntimeException(ex);
 			}
 		}
 
