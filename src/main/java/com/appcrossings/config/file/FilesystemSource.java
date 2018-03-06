@@ -6,207 +6,158 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import com.appcrossings.config.Config;
 import com.appcrossings.config.ConfigSource;
 import com.appcrossings.config.StringUtils;
 
 public class FilesystemSource implements ConfigSource {
 
-	public FilesystemSource() {
+  private final static Logger log = LoggerFactory.getLogger(FilesystemSource.class);
 
-	}
+  protected InputStream getFileStream(String fullPath) throws FileNotFoundException, IOException {
 
-	private final static Logger log = LoggerFactory.getLogger(FilesystemSource.class);
+    InputStream stream = null;
 
-	private InputStream getFileStream(String fullPath) throws FileNotFoundException, IOException {
+    if (isFilePath(fullPath)) {
 
-		InputStream stream = null;
+      String trimmed = fullPath.replaceFirst("file:", "");
+      stream = new FileInputStream(new File(trimmed));
 
-		if (isURL(fullPath)) {
+    } else if (isClasspath(fullPath)) {
 
-			stream = new URL(fullPath).openStream();
+      String trimmed = fullPath.replaceFirst("classpath:", "");
+      
+      if(!trimmed.startsWith(File.separator))
+        trimmed = File.separator + trimmed;
+      stream = this.getClass().getResourceAsStream(trimmed);
 
-		} else if (isFile(fullPath)) {
+    } else if (isPath(fullPath)) {
 
-			String trimmed = fullPath.replaceFirst("file:", "");
-			stream = new FileInputStream(new File(trimmed));
+      // could be relative to classpath or filesystem root (i.e. linux)
 
-		} else if (isClasspath(fullPath)) {
+      stream = this.getClass().getResourceAsStream(fullPath);
 
-			String trimmed = fullPath.replaceFirst("classpath:", "");
-			stream = this.getClass().getResourceAsStream(trimmed);
+      if (stream == null)
+        stream = new FileInputStream(new File(fullPath));
 
-		} else if (isPath(fullPath)) {
+    }
 
-			// could be relative to classpath or filesystem root (i.e. linux)
+    if (stream != null) {
+      log.info("Found " + fullPath);
+    } else {
+      log.info("Not found.");
+      throw new FileNotFoundException(fullPath);
+    }
 
-			stream = this.getClass().getResourceAsStream(fullPath);
+    return stream;
 
-			if (stream == null)
-				stream = new FileInputStream(new File(fullPath));
+  }
 
-		}
+  protected Properties fetchProperties(String propertiesPath, String propertiesFileName) {
 
-		if (stream != null) {
-			log.info("Found " + fullPath);
-		} else {
-			log.info("Not found.");
-			throw new FileNotFoundException(fullPath);
-		}
+    Properties p = new Properties();
 
-		return stream;
+    String fullPath = resolveFullFilePath(propertiesPath, propertiesFileName);
 
-	}
+    try (InputStream stream = getFileStream(fullPath);) {
 
-	protected Properties fetchProperties(String propertiesPath, String propertiesFileName) {
+      log.info("Attempting " + fullPath);
+      p.load(stream);
 
-		Properties p = new Properties();
+    } catch (FileNotFoundException e) {
 
-		String fullPath = "";
+      log.info("Not found.");
 
-		if (!propertiesPath.endsWith(File.separator) && !propertiesFileName.startsWith(File.separator))
-			fullPath = propertiesPath + "/" + propertiesFileName;
-		else
-			fullPath = propertiesPath + propertiesFileName;
+    } catch (IOException e) {
+      log.error(e.getMessage(), e);
+      throw new RuntimeException(e);
+    }
 
-		try (InputStream stream = getFileStream(fullPath);) {
+    return p;
+  }
 
-			log.info("Attempting " + fullPath);
-			p.load(stream);
+  public Properties resolveConfigPath(String hostsFile) {
 
-		} catch (FileNotFoundException e) {
+    log.info("Fetching hosts file from path: " + hostsFile);
+    return fetchProperties(hostsFile, Config.DEFAULT_HOSTS_FILE_NAME);
+  }
 
-			log.info("Not found.");
+  public Properties traverseConfigs(String propertiesPath, String propertiesFileName) {
 
-		} catch (IOException e) {
-			log.error(e.getMessage(), e);
-			throw new RuntimeException(e);
-		}
+    List<Properties> all = new ArrayList<>();
 
-		return p;
-	}
+    if (StringUtils.hasText(propertiesPath)) {
 
-	protected Properties downloadFile(URL resource) {
+      do {
 
-		Properties p = new Properties();
-		Throwable ex = null;
-		for (int retry = 0; retry < 3; retry++) {
+        all.add(fetchProperties(propertiesPath, propertiesFileName));
+        propertiesPath = stripDir(propertiesPath);
 
-			try (InputStream stream2 = resource.openStream()) {
+      } while (new File(propertiesPath).getParent() != null);
+    }
 
-				p.load(stream2);
-				break;
+    // Finally, check classpath
+    // if (searchClasspath) {
+    all.add(fetchProperties("classpath:/config/", propertiesFileName));
+    all.add(fetchProperties("classpath:", propertiesFileName));
+    // }
 
-			} catch (IOException e) {
-				ex = e;
-				continue;
+    Collections.reverse(all); // sort from root to highest
 
-			}
-		}
+    Properties ps = new Properties();
 
-		// we've retried, file not found...no issue, keep going
-		if (ex != null && StringUtils.hasText(ex.getMessage())
-				&& (ex.getMessage().contains("code: 403") || ex.getMessage().contains("code: 404"))) {
+    for (Properties p : all) {
+      ps.putAll(p);
+    }
 
-			// Do nothing here since we'll just keep looping with parent
-			// path anyway
+    return ps;
 
-		} else if (ex != null) {
-			throw new RuntimeException(ex);
-		}
+  }
 
-		return p;
+  protected String stripDir(String path) {
 
-	}
+    int i = path.lastIndexOf("/");
 
-	public Properties loadHosts(String hostsFile) throws IllegalArgumentException {
+    if (i > 0)
+      return path.substring(0, i);
 
-		log.info("Fetching hosts file from path: " + hostsFile);
+    return "";
 
-		Properties hosts = new Properties();
+  }
 
-		try (InputStream stream = getFileStream(hostsFile)) {
+  protected boolean isClasspath(String path) {
+    return path.trim().startsWith("classpath:");
+  }
 
-			hosts.load(stream);
+  protected boolean isFilePath(String path) {
+    return path.trim().startsWith("file:");
+  }
 
-		} catch (IOException e) {
-			log.error("Can't load hosts file", e);
-		} finally {
+  protected boolean isPath(String path) {
+    URI uri = URI.create(path);
+    uri.getScheme();
 
-		}
+    return path.trim().startsWith(File.separator);
+  }
 
-		return hosts;
+  protected String resolveFullFilePath(String propertiesPath, String propertiesFileName) {
+    String fullPath = "";
 
-	}
+    if (propertiesPath.toLowerCase().contains(propertiesFileName.toLowerCase()))
+      fullPath = propertiesPath;
+    else if (!propertiesPath.endsWith(File.separator)
+        && !propertiesFileName.startsWith(File.separator))
+      fullPath = propertiesPath + "/" + propertiesFileName;
+    else
+      fullPath = propertiesPath + propertiesFileName;
 
-	public Properties loadProperties(String propertiesPath, String propertiesFileName) {
-
-		List<Properties> all = new ArrayList<>();
-
-		if (StringUtils.hasText(propertiesPath)) {
-
-			do {
-
-				all.add(fetchProperties(propertiesPath, propertiesFileName));
-				propertiesPath = stripDir(propertiesPath);
-
-			} while (new File(propertiesPath).getParent() != null);
-		}
-
-		// Finally, check classpath
-		// if (searchClasspath) {
-		all.add(fetchProperties("classpath:/config/", propertiesFileName));
-		all.add(fetchProperties("classpath:", propertiesFileName));
-		// }
-
-		Collections.reverse(all); // sort from root to highest
-
-		Properties ps = new Properties();
-
-		for (Properties p : all) {
-			ps.putAll(p);
-		}
-
-		return ps;
-
-	}
-
-	protected String stripDir(String path) {
-
-		int i = path.lastIndexOf("/");
-
-		if (i > 0)
-			return path.substring(0, i);
-
-		return "";
-
-	}
-
-	protected boolean isURL(String path) {
-		return path.trim().startsWith("http");
-	}
-
-	protected boolean isClasspath(String path) {
-		return path.trim().startsWith("classpath:");
-	}
-
-	protected boolean isFile(String path) {
-		return path.trim().startsWith("file:");
-	}
-
-	protected boolean isPath(String path) {
-		URI uri = URI.create(path);
-		uri.getScheme();
-		
-		return path.trim().startsWith(File.separator);
-	}
+    return fullPath;
+  }
 
 }

@@ -1,14 +1,9 @@
 package com.appcrossings.config;
 
-import java.util.Map;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicReference;
-
-import org.apache.commons.beanutils.ConvertUtilsBean;
-import org.apache.commons.collections.map.HashedMap;
-import org.apache.commons.lang3.text.StrSubstitutor;
 import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
 import org.jasypt.encryption.pbe.config.EnvironmentStringPBEConfig;
 import org.jasypt.properties.EncryptableProperties;
@@ -20,237 +15,232 @@ import org.slf4j.LoggerFactory;
  * @author Krzysztof Karski
  *
  */
-public class ConfigClient {
+public class ConfigClient implements Config {
 
-	/** Default placeholder prefix: {@value} */
-	public static final String DEFAULT_PLACEHOLDER_PREFIX = "${";
+  protected ConfigSourceFactory configSource = new ConfigSourceFactory();
 
-	/** Default placeholder suffix: {@value} */
-	public static final String DEFAULT_PLACEHOLDER_SUFFIX = "}";
+  private class ReloadTask extends TimerTask {
 
-	/** Defaults to {@value #DEFAULT_PLACEHOLDER_PREFIX} */
-	protected String placeholderPrefix = DEFAULT_PLACEHOLDER_PREFIX;
+    @Override
+    public void run() {
+      try {
 
-	/** Defaults to {@value #DEFAULT_PLACEHOLDER_SUFFIX} */
-	protected String placeholderSuffix = DEFAULT_PLACEHOLDER_SUFFIX;
+        reload();
 
-	/** Default value separator: {@value} */
-	public static final String DEFAULT_VALUE_SEPARATOR = ":";
+      } catch (Exception e) {
+        logger.error("Error refreshing configs", e);
+      }
+    }
+  }
 
-	/** Defaults to {@value #DEFAULT_VALUE_SEPARATOR} */
-	protected String valueSeparator = DEFAULT_VALUE_SEPARATOR;
 
-	protected boolean ignoreUnresolvablePlaceholders = false;
+  private final static Logger logger = LoggerFactory.getLogger(ConfigClient.class);
 
-	protected ConfigSource configSource;
+  public final static boolean SEARCH_CLASSPATH = true;
 
-	protected AtomicReference<StrSubstitutor> sub = new AtomicReference<>(new StrSubstitutor());
+  private StandardPBEStringEncryptor encryptor = null;
 
-	private class ReloadTask extends TimerTask {
+  protected final Environment envUtil = new Environment();
 
-		@Override
-		public void run() {
-			try {
+  protected StringUtils strings;
 
-				reload();
+  protected final String startLocation;
 
-			} catch (Exception e) {
-				logger.error("Error refreshing configs", e);
-			}
-		}
-	}
+  private Method method = Method.HOST_FILE;
 
-	public final static String DEFAULT_PROPERTIES_FILE_NAME = "default.properties";
-	private final static Logger logger = LoggerFactory.getLogger(ConfigClient.class);
+  private final AtomicReference<Properties> loadedProperties = new AtomicReference<>();
 
-	public final static boolean SEARCH_CLASSPATH = true;
+  protected String propertiesFileName = DEFAULT_PROPERTIES_FILE_NAME;
 
-	private final ConvertUtilsBean bean = new ConvertUtilsBean();
+  protected boolean searchClasspath = SEARCH_CLASSPATH;
 
-	private StandardPBEStringEncryptor encryptor = null;
+  private Timer timer = new Timer(true);
 
-	protected EnvironmentUtil envUtil = new EnvironmentUtil();
+  public enum Method {
+    HOST_FILE, DIRECT_PATH;
+  }
 
-	protected final String hostsFilePath;
+  /**
+   * 
+   * @param path The path of the hosts.properties file
+   * @throws Exception
+   */
+  public ConfigClient(String path) throws Exception {
+    this.strings = new StringUtils(envUtil.getProperties());
+    this.startLocation = path;
+  }
 
-	private final AtomicReference<Properties> loadedProperties = new AtomicReference<>();
+  /**
+   * 
+   * @param path The path of the starting point for config exploration. Can be a default.properties
+   *        or hosts.properties path
+   * @throws Exception
+   */
+  public ConfigClient(String path, Method method) throws Exception {
+    this(path);
+    this.method = method;
+  }
 
-	protected String propertiesFileName = DEFAULT_PROPERTIES_FILE_NAME;
+  /**
+   * 
+   * @param path - The path of the starting point for config exploration. Can be a
+   *        default.properties or hosts.properties path
+   * @param refresh - The period in seconds at which the config properties should be refreshed. 0
+   *        indicates no automated timer
+   * @throws Exception
+   */
+  public ConfigClient(String path, int refresh, Method method) throws Exception {
+    this(path, method);
+    setRefreshRate(refresh);
+  }
 
-	protected boolean searchClasspath = SEARCH_CLASSPATH;
+  public <T> T getProperty(String key, Class<T> clazz) {
 
-	private Timer timer = new Timer(true);
+    String value = loadedProperties.get().getProperty(key);
+    value = strings.fill(value);
+    return strings.cast(value, clazz);
+  }
 
-	/**
-	 * 
-	 * @param path
-	 *            The path of the hosts.properties file
-	 * @throws Exception
-	 */
-	public ConfigClient(String path) throws Exception {
-		this.hostsFilePath = path;
-	}
+  public <T> T getProperty(String key, Class<T> clazz, T value) {
 
-	/**
-	 * 
-	 * @param path
-	 *            - The path of the hosts.properties file
-	 * @param refresh
-	 *            - The period in seconds at which the config properties should be
-	 *            refreshed. 0 indicates no automated timer
-	 * @throws Exception
-	 */
-	public ConfigClient(String path, int refresh) throws Exception {
-		this(path);
-		setRefreshRate(refresh);
-	}
+    T val = getProperty(key, clazz);
 
-	public <T> T getProperty(String key, Class<T> clazz) {
+    if (val != null)
+      return val;
 
-		String property;
-		try {
+    return value;
 
-			property = sub.get().replace(placeholderPrefix + key + placeholderSuffix);
+  }
 
-			if (property.equals(key))
-				return null;
+  public void init() {
 
-		} catch (IllegalArgumentException e) {
-			return null;
-		}
+    String environmentName = envUtil.detectEnvironment();
+    String hostName = envUtil.detectHostName();
+    String startPath = null;
 
-		if (clazz.equals(String.class))
-			return (T) property;
-		else if (property != null)
-			return (T) bean.convert(property, clazz);
-		else
-			return null;
+    if (this.method.equals(Method.HOST_FILE)) {
 
-	}
+      logger.info("Loading hosts file at " + startLocation);
 
-	public <T> T getProperty(String key, Class<T> clazz, T value) {
+      String source = this.configSource.resolveConfigSource(startLocation);
+      ConfigSource configSource = this.configSource.buildConfigSource(source);
 
-		T val = getProperty(key, clazz);
+      Properties hosts = configSource.resolveConfigPath(startLocation);
 
-		if (val != null)
-			return val;
+      if (encryptor != null)
+        hosts = new EncryptableProperties(hosts, encryptor);
 
-		return value;
+      startPath = hosts.getProperty(hostName);
 
-	}
+      // Attempt environment as a backup
+      if (!strings.hasText(startPath) && strings.hasText(environmentName)) {
 
-	protected void init() {
+        startPath = hosts.getProperty(environmentName);
 
-		String environmentName = envUtil.detectEnvironment();
-		String hostName = envUtil.detectHostName();
+      }
 
-		logger.info("Loading property files...");
+      if (!strings.hasText(startPath)) {
 
-		Properties hosts = configSource.loadHosts(hostsFilePath);
+        startPath = hosts.getProperty("*");// catch all
 
-		if (encryptor != null)
-			hosts = new EncryptableProperties(hosts, encryptor);
+      }
 
-		String startPath = hosts.getProperty(hostName);
+      if (startPath == null || startPath.trim().equals("")) {
+        throw new IllegalArgumentException(
+            "Hosts file failed to resolve a config start path evnironment settings "
+                + envUtil.toString());
+      }
 
-		// Attempt environment as a backup
-		if (StringUtils.hasText(startPath) && StringUtils.hasText(environmentName)) {
+    } else if (this.method.equals(Method.DIRECT_PATH)) {
+      startPath = this.startLocation;
+    }
 
-			startPath = hosts.getProperty(environmentName);
+    if (StringUtils.hasText(startPath)) {
 
-		} else if (StringUtils.hasText(startPath)) {
+      String source = this.configSource.resolveConfigSource(startPath);
+      ConfigSource configSource = this.configSource.buildConfigSource(source);
 
-			startPath = hosts.getProperty("*");// catch all
+      logger.debug("Searching for properties beginning at: " + startPath);
 
-		}
+      Properties ps = configSource.traverseConfigs(startPath, propertiesFileName);
 
-		if (startPath != null && !startPath.trim().equals("")) {
+      if (encryptor != null)
+        ps = new EncryptableProperties(ps, encryptor);
 
-			logger.debug("Searching for properties beginning at: " + startPath);
+      if (ps.isEmpty()) {
+        logger.warn("Counldn't find any properties for host " + hostName + " or environment "
+            + environmentName);
+      }
 
-			Properties ps = configSource.loadProperties(startPath, propertiesFileName);
+      loadedProperties.set(ps);
 
-			if (encryptor != null)
-				ps = new EncryptableProperties(ps, encryptor);
+    } else {
+      logger.warn("Counldn't find any properties for host " + hostName + " or environment "
+          + environmentName);
+    }
 
-			if (ps.isEmpty()) {
-				logger.warn(
-						"Counldn't find any properties for host " + hostName + " or environment " + environmentName);
-			}
+    final Properties merged = new Properties(envUtil.getProperties());
+    merged.putAll(loadedProperties.get());
+    strings = new StringUtils(merged);
 
-			// Finally, propagate properties to PropertyPlaceholderConfigurer
-			loadedProperties.set(ps);
+  }
 
-		} else {
-			logger.warn("Counldn't find any properties for host " + hostName + " or environment " + environmentName);
-		}
+  public void reload() {
 
-		Map<String, String> vals = new HashedMap();
-		loadedProperties.get().forEach((k, v) -> vals.put((String) k, (String) v));
-		sub.set(new StrSubstitutor(vals));
-	}
+    init();
 
-	public void reload() {
+  }
 
-		init();
+  public Environment getEnvironment() {
+    return envUtil;
+  }
 
-	}
+  public void setHostName(String hostName) {
+    envUtil.setHostName(hostName);
+  }
 
-	public void setEnvironment(String environmentName) {
-		envUtil.setEnvironmentName(environmentName);
-	}
+  /**
+   * Set password on the encryptor. If an encryptor isn't configured, a BasicTextEncryptor will be
+   * initialized and the password set on it. The basic assumed encryption algorithm is
+   * PBEWithMD5AndDES. This can be changed by setting the StandardPBEStringEncryptor.
+   * 
+   * @param password
+   */
+  public void setPassword(String password) {
 
-	public void setFileName(String fileName) {
-		this.propertiesFileName = fileName;
-	}
+    this.encryptor = new StandardPBEStringEncryptor();
+    EnvironmentStringPBEConfig configurationEncryptor = new EnvironmentStringPBEConfig();
+    configurationEncryptor.setAlgorithm("PBEWithMD5AndDES");
+    configurationEncryptor.setPassword(password);
+    encryptor.setConfig(configurationEncryptor);
 
-	public void setHostName(String hostName) {
-		envUtil.setHostName(hostName);
-	}
+  };
 
-	/**
-	 * Set password on the encryptor. If an encryptor isn't configured, a
-	 * BasicTextEncryptor will be initialized and the password set on it. The basic
-	 * assumed encryption algorithm is PBEWithMD5AndDES. This can be changed by
-	 * setting the StandardPBEStringEncryptor.
-	 * 
-	 * @param password
-	 */
-	public void setPassword(String password) {
+  /**
+   * Override default text encryptor (StandardPBEStringEncryptor). Enables overriding both password
+   * and algorithm.
+   * 
+   * @param encryptor
+   */
+  public void setTextEncryptor(StandardPBEStringEncryptor config) {
+    this.encryptor = config;
+  }
 
-		this.encryptor = new StandardPBEStringEncryptor();
-		EnvironmentStringPBEConfig configurationEncryptor = new EnvironmentStringPBEConfig();
-		configurationEncryptor.setAlgorithm("PBEWithMD5AndDES");
-		configurationEncryptor.setPassword(password);
-		encryptor.setConfig(configurationEncryptor);
+  public void setRefreshRate(Integer refresh) {
 
-	};
+    if (refresh == 0L || refresh == null) {
+      timer.cancel();
+      return;
+    }
 
-	/**
-	 * Override default text encryptor (StandardPBEStringEncryptor). Enables
-	 * overriding both password and algorithm.
-	 * 
-	 * @param encryptor
-	 */
-	public void setTextEncryptor(StandardPBEStringEncryptor config) {
-		this.encryptor = config;
-	}
+    synchronized (timer) {
+      timer.cancel();
+      timer = new Timer(true);
+      timer.schedule(new ReloadTask(), refresh * 1000, refresh * 1000);
+    }
+  }
 
-	public void setRefreshRate(Integer refresh) {
-
-		if (refresh == 0L || refresh == null) {
-			timer.cancel();
-			return;
-		}
-
-		synchronized (timer) {
-			timer.cancel();
-			timer = new Timer(true);
-			timer.schedule(new ReloadTask(), refresh * 1000, refresh * 1000);
-		}
-	}
-
-	public void setSearchClasspath(boolean searchClasspath) {
-		this.searchClasspath = searchClasspath;
-	}
+  public void setSearchClasspath(boolean searchClasspath) {
+    this.searchClasspath = searchClasspath;
+  }
 }

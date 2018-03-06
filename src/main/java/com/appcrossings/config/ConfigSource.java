@@ -4,7 +4,7 @@ import java.util.Properties;
 
 public interface ConfigSource {
 
-	public Properties loadProperties(String propertiesPath, String propertiesFileName);
-	public Properties loadHosts(String hostsFile);
+	public Properties traverseConfigs(String propertiesPath, String propertiesFileName);
+	public Properties resolveConfigPath(String hostsFile);
 
 }

@@ -7,6 +7,9 @@ package com.appcrossings.config;
  *
  */
 public interface Config {
+  
+  public final static String DEFAULT_HOSTS_FILE_NAME = "hosts.properties";
+  public final static String DEFAULT_PROPERTIES_FILE_NAME = "default.properties";
 
   /**
    * 
