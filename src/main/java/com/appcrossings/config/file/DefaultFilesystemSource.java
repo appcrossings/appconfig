@@ -12,13 +12,13 @@ import java.util.List;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.appcrossings.config.Config;
 import com.appcrossings.config.ConfigSource;
+import com.appcrossings.config.ConfigSourceResolver;
 import com.appcrossings.config.StringUtils;
 
-public class FilesystemSource implements ConfigSource {
+public class DefaultFilesystemSource implements ConfigSource {
 
-  private final static Logger log = LoggerFactory.getLogger(FilesystemSource.class);
+  private final static Logger log = LoggerFactory.getLogger(DefaultFilesystemSource.class);
 
   protected InputStream getFileStream(String fullPath) throws FileNotFoundException, IOException {
 
@@ -32,8 +32,8 @@ public class FilesystemSource implements ConfigSource {
     } else if (isClasspath(fullPath)) {
 
       String trimmed = fullPath.replaceFirst("classpath:", "");
-      
-      if(!trimmed.startsWith(File.separator))
+
+      if (!trimmed.startsWith(File.separator))
         trimmed = File.separator + trimmed;
       stream = this.getClass().getResourceAsStream(trimmed);
 
@@ -59,7 +59,8 @@ public class FilesystemSource implements ConfigSource {
 
   }
 
-  protected Properties fetchProperties(String propertiesPath, String propertiesFileName) {
+  @Override
+  public Properties fetchConfig(String propertiesPath, String propertiesFileName) {
 
     Properties p = new Properties();
 
@@ -82,10 +83,10 @@ public class FilesystemSource implements ConfigSource {
     return p;
   }
 
-  public Properties resolveConfigPath(String hostsFile) {
+  public Properties resolveConfigPath(String hostsFile, String hostsFileName) {
 
     log.info("Fetching hosts file from path: " + hostsFile);
-    return fetchProperties(hostsFile, Config.DEFAULT_HOSTS_FILE_NAME);
+    return fetchConfig(hostsFile, hostsFileName);
   }
 
   public Properties traverseConfigs(String propertiesPath, String propertiesFileName) {
@@ -96,7 +97,7 @@ public class FilesystemSource implements ConfigSource {
 
       do {
 
-        all.add(fetchProperties(propertiesPath, propertiesFileName));
+        all.add(fetchConfig(propertiesPath, propertiesFileName));
         propertiesPath = stripDir(propertiesPath);
 
       } while (new File(propertiesPath).getParent() != null);
@@ -104,8 +105,8 @@ public class FilesystemSource implements ConfigSource {
 
     // Finally, check classpath
     // if (searchClasspath) {
-    all.add(fetchProperties("classpath:/config/", propertiesFileName));
-    all.add(fetchProperties("classpath:", propertiesFileName));
+    all.add(fetchConfig("classpath:/config/", propertiesFileName));
+    all.add(fetchConfig("classpath:", propertiesFileName));
     // }
 
     Collections.reverse(all); // sort from root to highest
@@ -158,6 +159,20 @@ public class FilesystemSource implements ConfigSource {
       fullPath = propertiesPath + propertiesFileName;
 
     return fullPath;
+  }
+
+  @Override
+  public String getSourceName() {
+    return ConfigSourceResolver.FILE_SYSTEM;
+  }
+
+  @Override
+  public boolean isCompatible(String paths) {
+
+    final String prefix = paths.trim().substring(0, paths.indexOf("/"));
+    return (prefix == "" || prefix.equals(File.separator)
+        || prefix.toLowerCase().startsWith("file:")
+        || prefix.toLowerCase().startsWith("classpath"));
   }
 
 }

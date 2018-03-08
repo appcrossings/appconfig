@@ -15,14 +15,14 @@ public class TestHostFilePropertyLookup {
   @Test
   public void createConfigWithNonExistingHostOrEnvironment() throws Exception {
     ConfigClient config = new ConfigClient("classpath:/env/hosts.properties");
-    config.setHostName("doesntexist");
+    config.getEnvironment().setHostName("doesntexist");
     config.init();
   }
 
   @Test
   public void createConfigWithNonExistingProperties() throws Exception {
     ConfigClient config = new ConfigClient("classpath:/env/hosts.properties");
-    config.setHostName("xyz");
+    config.getEnvironment().setHostName("xyz");
     config.init();
   }
   
@@ -38,7 +38,7 @@ public class TestHostFilePropertyLookup {
   @Test
   public void testLookupConfigByHostname() throws Exception {
     ConfigClient config = new ConfigClient("classpath:/env/hosts.properties");
-    config.setHostName("michelangello-custom2");
+    config.getEnvironment().setHostName("michelangello-custom2");
     config.init();
     
     Assert.assertEquals("michelangello", config.getProperty("property.3.name", String.class));

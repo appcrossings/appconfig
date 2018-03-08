@@ -10,12 +10,12 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import com.appcrossings.config.Config;
 import com.appcrossings.config.ConfigSource;
-import com.appcrossings.config.ConfigSourceFactory;
+import com.appcrossings.config.ConfigSourceResolver;
 
 public class TestLoadProperties {
 
   private ConfigSource source;
-  private ConfigSourceFactory factory = new ConfigSourceFactory();
+  private ConfigSourceResolver factory = new ConfigSourceResolver();
 
   @Rule
   public TemporaryFolder folder = new TemporaryFolder();
@@ -26,7 +26,7 @@ public class TestLoadProperties {
     System.out.println("from: " + FileUtils.toFile(this.getClass().getResource("/env")));
     System.out.println("to: " + folder.getRoot().toPath());
     FileUtils.copyDirectory(FileUtils.toFile(this.getClass().getResource("/")), folder.getRoot());
-    source = factory.buildConfigSource(ConfigSourceFactory.FILE_SYSTEM);
+    source = factory.getBySourceName(ConfigSourceResolver.FILE_SYSTEM);
   }
 
   @After
@@ -81,7 +81,7 @@ public class TestLoadProperties {
   @Test
   public void testLoadHosts() throws Exception {
 
-    Properties p = source.resolveConfigPath("classpath:/env/hosts.properties");
+    Properties p = source.resolveConfigPath("classpath:/env/hosts.properties", Config.DEFAULT_HOSTS_FILE_NAME);
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("michelangello"));
     Assert.assertEquals(p.getProperty("michelangello"), "classpath:/env/dev/");

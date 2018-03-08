@@ -10,6 +10,15 @@ public interface Config {
   
   public final static String DEFAULT_HOSTS_FILE_NAME = "hosts.properties";
   public final static String DEFAULT_PROPERTIES_FILE_NAME = "default.properties";
+  public final static boolean SEARCH_CLASSPATH = true;
+  
+  public final static String HOST_FILE_NAME = "file.hosts.name";
+  public final static String PROPERTIES_FILE_NAME = "file.props.name";
+  public final static String REFRESH_RATE = "timer.ttl";
+  public final static String TRAVERSE_CLASSPATH = "traverse.classpath";
+  public final static String METHOD = "lookup.method";
+  public final static String PATH = "file.path";
+  public final static String HOST_NAME = "HOSTNAME";
 
   /**
    * 

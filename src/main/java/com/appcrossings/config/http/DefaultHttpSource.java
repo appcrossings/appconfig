@@ -7,15 +7,15 @@ import java.net.URL;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.appcrossings.config.Config;
 import com.appcrossings.config.ConfigSource;
+import com.appcrossings.config.ConfigSourceResolver;
 
-public class HttpSource implements ConfigSource {
+public class DefaultHttpSource implements ConfigSource {
 
-  private final static Logger log = LoggerFactory.getLogger(HttpSource.class);
+  private final static Logger log = LoggerFactory.getLogger(DefaultHttpSource.class);
 
   @Override
-  public Properties traverseConfigs(String propertiesPath, String propertiesFileName) {
+  public Properties fetchConfig(String propertiesPath, String propertiesFileName) {
 
     String fullPath = "";
     Properties p = new Properties();
@@ -48,12 +48,30 @@ public class HttpSource implements ConfigSource {
   }
 
   @Override
-  public Properties resolveConfigPath(String hostsFile) {
-    return traverseConfigs(hostsFile, Config.DEFAULT_HOSTS_FILE_NAME);
+  public Properties resolveConfigPath(String hostsFile, String hostsFileName) {
+    return traverseConfigs(hostsFile, hostsFileName);
   }
 
   protected boolean isURL(String path) {
     return path.trim().startsWith("http");
   }
+
+  @Override
+  public Properties traverseConfigs(String propertiesPath, String propertiesFileName) {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public String getSourceName() {
+    return ConfigSourceResolver.HTTPS;
+  }
+
+  @Override
+  public boolean isCompatible(String path) {
+    final String prefix = path.trim().substring(0, path.indexOf("/"));
+    return (prefix.toLowerCase().startsWith("http"));
+  }
+
 
 }

@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ConfigClient implements Config {
 
-  protected ConfigSourceFactory configSource = new ConfigSourceFactory();
+  protected ConfigSourceResolver configSource = new ConfigSourceResolver();
 
   private class ReloadTask extends TimerTask {
 
@@ -25,7 +25,7 @@ public class ConfigClient implements Config {
     public void run() {
       try {
 
-        reload();
+        init();
 
       } catch (Exception e) {
         logger.error("Error refreshing configs", e);
@@ -36,25 +36,27 @@ public class ConfigClient implements Config {
 
   private final static Logger logger = LoggerFactory.getLogger(ConfigClient.class);
 
-  public final static boolean SEARCH_CLASSPATH = true;
-
   private StandardPBEStringEncryptor encryptor = null;
 
   protected final Environment envUtil = new Environment();
+
+  protected Integer timerTTL = 0;
 
   protected StringUtils strings;
 
   protected final String startLocation;
 
-  private Method method = Method.HOST_FILE;
-
   private final AtomicReference<Properties> loadedProperties = new AtomicReference<>();
+
+  private Method method = Method.HOST_FILE;
 
   protected String propertiesFileName = DEFAULT_PROPERTIES_FILE_NAME;
 
+  protected String hostsFileName = DEFAULT_HOSTS_FILE_NAME;
+
   protected boolean searchClasspath = SEARCH_CLASSPATH;
 
-  private Timer timer = new Timer(true);
+  private AtomicReference<Timer> timer = new AtomicReference<Timer>();
 
   public enum Method {
     HOST_FILE, DIRECT_PATH;
@@ -68,6 +70,35 @@ public class ConfigClient implements Config {
   public ConfigClient(String path) throws Exception {
     this.strings = new StringUtils(envUtil.getProperties());
     this.startLocation = path;
+  }
+
+  public ConfigClient(Properties props) throws Exception {
+
+    assert !props
+        .containsKey(Config.PATH) : "File path to hosts.properties or start location is mandatory";
+    this.startLocation = props.getProperty(Config.PATH);
+
+    if (props.containsKey(Config.HOST_NAME))
+      getEnvironment().setHostName(props.getProperty(Config.HOST_NAME));
+
+    if (props.containsKey(Config.HOST_FILE_NAME))
+      this.hostsFileName = props.getProperty(Config.HOST_FILE_NAME);
+
+    if (props.containsKey(Config.PROPERTIES_FILE_NAME))
+      this.propertiesFileName = props.getProperty(Config.PROPERTIES_FILE_NAME);
+
+    if (props.containsKey(Config.SEARCH_CLASSPATH))
+      this.searchClasspath = Boolean.parseBoolean(props.getProperty(Config.TRAVERSE_CLASSPATH));
+
+    if (props.containsKey(Config.REFRESH_RATE))
+      this.timerTTL = Integer.parseInt((String) props.getProperty(Config.REFRESH_RATE));
+
+    if (props.containsKey(Config.METHOD))
+      this.method = Method.valueOf(props.getProperty(Config.METHOD));
+
+
+    this.strings = new StringUtils(envUtil.getProperties());
+
   }
 
   /**
@@ -105,7 +136,7 @@ public class ConfigClient implements Config {
 
     T val = getProperty(key, clazz);
 
-    if (val != null)
+    if (val != null && val != "")
       return val;
 
     return value;
@@ -122,10 +153,9 @@ public class ConfigClient implements Config {
 
       logger.info("Loading hosts file at " + startLocation);
 
-      String source = this.configSource.resolveConfigSource(startLocation);
-      ConfigSource configSource = this.configSource.buildConfigSource(source);
+      ConfigSource configSource = this.configSource.resolveSource(startLocation);
 
-      Properties hosts = configSource.resolveConfigPath(startLocation);
+      Properties hosts = configSource.resolveConfigPath(startLocation, hostsFileName);
 
       if (encryptor != null)
         hosts = new EncryptableProperties(hosts, encryptor);
@@ -157,8 +187,7 @@ public class ConfigClient implements Config {
 
     if (StringUtils.hasText(startPath)) {
 
-      String source = this.configSource.resolveConfigSource(startPath);
-      ConfigSource configSource = this.configSource.buildConfigSource(source);
+      ConfigSource configSource = this.configSource.resolveSource(startPath);
 
       logger.debug("Searching for properties beginning at: " + startPath);
 
@@ -183,20 +212,12 @@ public class ConfigClient implements Config {
     merged.putAll(loadedProperties.get());
     strings = new StringUtils(merged);
 
-  }
-
-  public void reload() {
-
-    init();
+    setRefreshRate(timerTTL);
 
   }
 
   public Environment getEnvironment() {
     return envUtil;
-  }
-
-  public void setHostName(String hostName) {
-    envUtil.setHostName(hostName);
   }
 
   /**
@@ -214,7 +235,7 @@ public class ConfigClient implements Config {
     configurationEncryptor.setPassword(password);
     encryptor.setConfig(configurationEncryptor);
 
-  };
+  }
 
   /**
    * Override default text encryptor (StandardPBEStringEncryptor). Enables overriding both password
@@ -226,21 +247,24 @@ public class ConfigClient implements Config {
     this.encryptor = config;
   }
 
-  public void setRefreshRate(Integer refresh) {
+  protected void setRefreshRate(Integer refresh) {
 
-    if (refresh == 0L || refresh == null) {
-      timer.cancel();
+    this.timerTTL = refresh;
+
+    if (timer.get() != null && (refresh == 0L || refresh == null)) {
+
+      timer.get().cancel();
       return;
+
+    } else if (refresh > 0) {
+
+      Timer t2 = new Timer(true);
+      t2.schedule(new ReloadTask(), refresh * 1000, refresh * 1000);
+
+      Timer t1 = timer.getAndSet(t2);
+      if (t1 != null)
+        t1.cancel();
     }
 
-    synchronized (timer) {
-      timer.cancel();
-      timer = new Timer(true);
-      timer.schedule(new ReloadTask(), refresh * 1000, refresh * 1000);
-    }
-  }
-
-  public void setSearchClasspath(boolean searchClasspath) {
-    this.searchClasspath = searchClasspath;
   }
 }
