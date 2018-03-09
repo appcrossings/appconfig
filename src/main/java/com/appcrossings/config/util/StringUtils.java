@@ -1,4 +1,4 @@
-package com.appcrossings.config;
+package com.appcrossings.config.util;
 
 import java.util.Map;
 import java.util.Properties;
@@ -21,7 +21,7 @@ public class StringUtils {
 
   protected boolean ignoreUnresolvablePlaceholders = false;
 
-  protected StringUtils(Properties props) {
+  public StringUtils(Properties props) {
     Map<String, String> vals = new HashedMap();
     props.forEach((k, v) -> vals.put((String) k, (String) v));
     sub.set(new StrSubstitutor(vals));

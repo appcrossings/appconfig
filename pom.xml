@@ -40,6 +40,10 @@
 			<artifactId>logback-classic</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+		</dependency>
 	</dependencies>
 	<parent>
 		<groupId>com.appcrossings.config</groupId>

@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.appcrossings.config.ConfigSource;
 import com.appcrossings.config.ConfigSourceResolver;
+import com.appcrossings.config.MergeStrategy;
 
 public class DefaultHttpSource implements ConfigSource {
 
@@ -49,7 +50,7 @@ public class DefaultHttpSource implements ConfigSource {
 
   @Override
   public Properties resolveConfigPath(String hostsFile, String hostsFileName) {
-    return traverseConfigs(hostsFile, hostsFileName);
+    return null;
   }
 
   protected boolean isURL(String path) {
@@ -57,7 +58,7 @@ public class DefaultHttpSource implements ConfigSource {
   }
 
   @Override
-  public Properties traverseConfigs(String propertiesPath, String propertiesFileName) {
+  public Properties traverseConfigs(String propertiesPath, String propertiesFileName, MergeStrategy strategy) {
     // TODO Auto-generated method stub
     return null;
   }

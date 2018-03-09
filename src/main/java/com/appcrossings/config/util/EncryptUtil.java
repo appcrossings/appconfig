@@ -1,4 +1,4 @@
-package com.appcrossings.config;
+package com.appcrossings.config.util;
 
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.slf4j.Logger;

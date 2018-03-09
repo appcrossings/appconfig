@@ -11,6 +11,7 @@ import org.junit.rules.TemporaryFolder;
 import com.appcrossings.config.Config;
 import com.appcrossings.config.ConfigSource;
 import com.appcrossings.config.ConfigSourceResolver;
+import com.appcrossings.config.strategy.DefaultMergeStrategy;
 
 public class TestLoadProperties {
 
@@ -37,7 +38,7 @@ public class TestLoadProperties {
   @Test
   public void loadClasspathProperties() throws Exception {
 
-    Properties p = source.traverseConfigs("classpath:/env/dev", Config.DEFAULT_PROPERTIES_FILE_NAME);
+    Properties p = source.traverseConfigs("classpath:/env/dev", Config.DEFAULT_PROPERTIES_FILE_NAME, new DefaultMergeStrategy());
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.getProperty("property.1.name"), "value1");
@@ -48,7 +49,7 @@ public class TestLoadProperties {
   public void loadFileProperties() throws Exception {
 
     Properties p = source.traverseConfigs("file:/" + folder.getRoot() + "/env/dev/",
-        Config.DEFAULT_PROPERTIES_FILE_NAME);
+        Config.DEFAULT_PROPERTIES_FILE_NAME, new DefaultMergeStrategy());
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.getProperty("property.1.name"), "value1");
@@ -58,7 +59,7 @@ public class TestLoadProperties {
   @Test
   public void loadClasspathRelativePath() throws Exception {
 
-    Properties p = source.traverseConfigs("/env/dev/", Config.DEFAULT_PROPERTIES_FILE_NAME);
+    Properties p = source.traverseConfigs("/env/dev/", Config.DEFAULT_PROPERTIES_FILE_NAME, new DefaultMergeStrategy());
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.getProperty("property.1.name"), "value1");
@@ -69,7 +70,7 @@ public class TestLoadProperties {
   public void loadAbsoluteFile() throws Exception {
 
     Properties p = source.traverseConfigs(folder.getRoot() + "/env/dev/",
-        Config.DEFAULT_PROPERTIES_FILE_NAME);
+        Config.DEFAULT_PROPERTIES_FILE_NAME, new DefaultMergeStrategy());
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.getProperty("property.1.name"), "value1");

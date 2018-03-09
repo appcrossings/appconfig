@@ -9,6 +9,10 @@ import org.jasypt.encryption.pbe.config.EnvironmentStringPBEConfig;
 import org.jasypt.properties.EncryptableProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.appcrossings.config.strategy.DefaultConfigLookupStrategy;
+import com.appcrossings.config.strategy.DefaultMergeStrategy;
+import com.appcrossings.config.util.Environment;
+import com.appcrossings.config.util.StringUtils;
 
 /**
  * 
@@ -17,7 +21,9 @@ import org.slf4j.LoggerFactory;
  */
 public class ConfigClient implements Config {
 
-  protected ConfigSourceResolver configSource = new ConfigSourceResolver();
+  public enum Method {
+    DIRECT_PATH, HOST_FILE;
+  }
 
   private class ReloadTask extends TimerTask {
 
@@ -36,41 +42,33 @@ public class ConfigClient implements Config {
 
   private final static Logger logger = LoggerFactory.getLogger(ConfigClient.class);
 
+  protected final ConfigSourceResolver configSource = new ConfigSourceResolver();
+
   private StandardPBEStringEncryptor encryptor = null;
 
   protected final Environment envUtil = new Environment();
 
-  protected Integer timerTTL = 0;
-
-  protected StringUtils strings;
-
-  protected final String startLocation;
+  protected String hostsFileName = DEFAULT_HOSTS_FILE_NAME;
 
   private final AtomicReference<Properties> loadedProperties = new AtomicReference<>();
+
+  private ConfigLookupStrategy lookupStrategy = new DefaultConfigLookupStrategy();
+
+  private MergeStrategy mergeStrategy = new DefaultMergeStrategy();
 
   private Method method = Method.HOST_FILE;
 
   protected String propertiesFileName = DEFAULT_PROPERTIES_FILE_NAME;
 
-  protected String hostsFileName = DEFAULT_HOSTS_FILE_NAME;
-
   protected boolean searchClasspath = SEARCH_CLASSPATH;
+
+  protected final String startLocation;
+
+  protected StringUtils strings;
 
   private AtomicReference<Timer> timer = new AtomicReference<Timer>();
 
-  public enum Method {
-    HOST_FILE, DIRECT_PATH;
-  }
-
-  /**
-   * 
-   * @param path The path of the hosts.properties file
-   * @throws Exception
-   */
-  public ConfigClient(String path) throws Exception {
-    this.strings = new StringUtils(envUtil.getProperties());
-    this.startLocation = path;
-  }
+  protected Integer timerTTL = 0;
 
   public ConfigClient(Properties props) throws Exception {
 
@@ -96,6 +94,12 @@ public class ConfigClient implements Config {
     if (props.containsKey(Config.METHOD))
       this.method = Method.valueOf(props.getProperty(Config.METHOD));
 
+    if (props.containsKey(Config.CONFIG_MERGE_STRATEGY))
+      this.mergeStrategy = (MergeStrategy) props.get(Config.CONFIG_MERGE_STRATEGY);
+
+    if (props.containsKey(Config.CONFIG_LOOKUP_STRATEGY))
+      this.lookupStrategy = (ConfigLookupStrategy) props.get(Config.CONFIG_LOOKUP_STRATEGY);
+
 
     this.strings = new StringUtils(envUtil.getProperties());
 
@@ -103,13 +107,12 @@ public class ConfigClient implements Config {
 
   /**
    * 
-   * @param path The path of the starting point for config exploration. Can be a default.properties
-   *        or hosts.properties path
+   * @param path The path of the hosts.properties file
    * @throws Exception
    */
-  public ConfigClient(String path, Method method) throws Exception {
-    this(path);
-    this.method = method;
+  public ConfigClient(String path) throws Exception {
+    this.strings = new StringUtils(envUtil.getProperties());
+    this.startLocation = path;
   }
 
   /**
@@ -123,6 +126,25 @@ public class ConfigClient implements Config {
   public ConfigClient(String path, int refresh, Method method) throws Exception {
     this(path, method);
     setRefreshRate(refresh);
+  }
+
+  /**
+   * 
+   * @param path The path of the starting point for config exploration. Can be a default.properties
+   *        or hosts.properties path
+   * @throws Exception
+   */
+  public ConfigClient(String path, Method method) throws Exception {
+    this(path);
+    this.method = method;
+  }
+
+  public Environment getEnvironment() {
+    return envUtil;
+  }
+
+  public MergeStrategy getMergeStrategy() {
+    return mergeStrategy;
   }
 
   public <T> T getProperty(String key, Class<T> clazz) {
@@ -160,26 +182,7 @@ public class ConfigClient implements Config {
       if (encryptor != null)
         hosts = new EncryptableProperties(hosts, encryptor);
 
-      startPath = hosts.getProperty(hostName);
-
-      // Attempt environment as a backup
-      if (!strings.hasText(startPath) && strings.hasText(environmentName)) {
-
-        startPath = hosts.getProperty(environmentName);
-
-      }
-
-      if (!strings.hasText(startPath)) {
-
-        startPath = hosts.getProperty("*");// catch all
-
-      }
-
-      if (startPath == null || startPath.trim().equals("")) {
-        throw new IllegalArgumentException(
-            "Hosts file failed to resolve a config start path evnironment settings "
-                + envUtil.toString());
-      }
+      startPath = lookupStrategy.lookupConfigPath(hosts, envUtil.getProperties());
 
     } else if (this.method.equals(Method.DIRECT_PATH)) {
       startPath = this.startLocation;
@@ -187,11 +190,13 @@ public class ConfigClient implements Config {
 
     if (StringUtils.hasText(startPath)) {
 
+      mergeStrategy.clear();
+
       ConfigSource configSource = this.configSource.resolveSource(startPath);
 
       logger.debug("Searching for properties beginning at: " + startPath);
 
-      Properties ps = configSource.traverseConfigs(startPath, propertiesFileName);
+      Properties ps = configSource.traverseConfigs(startPath, propertiesFileName, mergeStrategy);
 
       if (encryptor != null)
         ps = new EncryptableProperties(ps, encryptor);
@@ -208,16 +213,14 @@ public class ConfigClient implements Config {
           + environmentName);
     }
 
-    final Properties merged = new Properties(envUtil.getProperties());
-    merged.putAll(loadedProperties.get());
-    strings = new StringUtils(merged);
-
+    mergeStrategy.addConfig(envUtil.getProperties());
+    strings = new StringUtils(mergeStrategy.merge());
     setRefreshRate(timerTTL);
 
   }
 
-  public Environment getEnvironment() {
-    return envUtil;
+  public void setMergeStrategy(MergeStrategy mergeStrategy) {
+    this.mergeStrategy = mergeStrategy;
   }
 
   /**
@@ -235,16 +238,6 @@ public class ConfigClient implements Config {
     configurationEncryptor.setPassword(password);
     encryptor.setConfig(configurationEncryptor);
 
-  }
-
-  /**
-   * Override default text encryptor (StandardPBEStringEncryptor). Enables overriding both password
-   * and algorithm.
-   * 
-   * @param encryptor
-   */
-  public void setTextEncryptor(StandardPBEStringEncryptor config) {
-    this.encryptor = config;
   }
 
   protected void setRefreshRate(Integer refresh) {
@@ -266,5 +259,15 @@ public class ConfigClient implements Config {
         t1.cancel();
     }
 
+  }
+
+  /**
+   * Override default text encryptor (StandardPBEStringEncryptor). Enables overriding both password
+   * and algorithm.
+   * 
+   * @param encryptor
+   */
+  public void setTextEncryptor(StandardPBEStringEncryptor config) {
+    this.encryptor = config;
   }
 }

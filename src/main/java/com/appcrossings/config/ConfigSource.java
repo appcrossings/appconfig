@@ -19,7 +19,7 @@ public interface ConfigSource {
      * @param propertiesFileName
      * @return
      */
-	public Properties traverseConfigs(String propertiesPath, String propertiesFileName);
+	public Properties traverseConfigs(String propertiesPath, String propertiesFileName, MergeStrategy strategy);
 	
 	/**
 	 * Resolves the config node to start traversal at via hosts entry. 

@@ -6,21 +6,19 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.appcrossings.config.ConfigSource;
 import com.appcrossings.config.ConfigSourceResolver;
-import com.appcrossings.config.StringUtils;
+import com.appcrossings.config.MergeStrategy;
+import com.appcrossings.config.util.StringUtils;
 
 public class DefaultFilesystemSource implements ConfigSource {
 
   private final static Logger log = LoggerFactory.getLogger(DefaultFilesystemSource.class);
 
-  protected InputStream getFileStream(String fullPath) throws FileNotFoundException, IOException {
+  public InputStream getFileStream(String fullPath) throws FileNotFoundException, IOException {
 
     InputStream stream = null;
 
@@ -89,15 +87,14 @@ public class DefaultFilesystemSource implements ConfigSource {
     return fetchConfig(hostsFile, hostsFileName);
   }
 
-  public Properties traverseConfigs(String propertiesPath, String propertiesFileName) {
-
-    List<Properties> all = new ArrayList<>();
+  public Properties traverseConfigs(String propertiesPath, String propertiesFileName,
+      MergeStrategy strategy) {
 
     if (StringUtils.hasText(propertiesPath)) {
 
       do {
 
-        all.add(fetchConfig(propertiesPath, propertiesFileName));
+        strategy.addConfig(fetchConfig(propertiesPath, propertiesFileName));
         propertiesPath = stripDir(propertiesPath);
 
       } while (new File(propertiesPath).getParent() != null);
@@ -105,19 +102,11 @@ public class DefaultFilesystemSource implements ConfigSource {
 
     // Finally, check classpath
     // if (searchClasspath) {
-    all.add(fetchConfig("classpath:/config/", propertiesFileName));
-    all.add(fetchConfig("classpath:", propertiesFileName));
+    strategy.addConfig(fetchConfig("classpath:/config/", propertiesFileName));
+    strategy.addConfig(fetchConfig("classpath:", propertiesFileName));
     // }
 
-    Collections.reverse(all); // sort from root to highest
-
-    Properties ps = new Properties();
-
-    for (Properties p : all) {
-      ps.putAll(p);
-    }
-
-    return ps;
+    return strategy.merge();
 
   }
 

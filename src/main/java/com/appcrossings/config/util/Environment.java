@@ -1,4 +1,4 @@
-package com.appcrossings.config;
+package com.appcrossings.config.util;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -21,12 +21,12 @@ public class Environment {
   public final static String APP_NAME = "app.name";
   public final static String APP_VERSION = "app.version";
 
-  public final static String PREFIX = "appconfig";
+  public final static String PREFIX = "appconfig.";
 
   private final static Logger log = LoggerFactory.getLogger(Environment.class);
   protected final Map<String, String> envProps = new HashMap<>();
 
-  protected Environment() {}
+  public Environment() {}
 
   /**
    * Attempt to detect environment of the application.
@@ -161,7 +161,7 @@ public class Environment {
     if (!this.envProps.isEmpty()) {
       this.envProps.forEach((k, v) -> {
         if (v != null && k != null && k != "")
-          props.put(PREFIX + "." + k, v);
+          props.put(PREFIX + k, v);
       });
     }
     return props;

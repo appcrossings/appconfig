@@ -19,6 +19,8 @@ public interface Config {
   public final static String METHOD = "lookup.method";
   public final static String PATH = "file.path";
   public final static String HOST_NAME = "HOSTNAME";
+  public final static String CONFIG_LOOKUP_STRATEGY = "config.strategy.lookup";
+  public final static String CONFIG_MERGE_STRATEGY= "config.strategy.merge";
 
   /**
    * 
