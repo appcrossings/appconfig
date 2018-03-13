@@ -70,25 +70,25 @@ public class DefaultFilesystemSource implements ConfigSource {
     try (InputStream stream = getFileStream(fullPath);) {
 
       log.info("Attempting " + fullPath);
-      
-      if(JsonProcessor.isJsonFile(fullPath)) {
-        
+
+      if (JsonProcessor.isJsonFile(fullPath)) {
+
         p = JsonProcessor.asProperties(stream);
-        
-      }else if(YamlProcessor.isYamlFile(fullPath)) {
-        
+
+      } else if (YamlProcessor.isYamlFile(fullPath)) {
+
         p = YamlProcessor.asProperties(stream);
-        
-      }else if(PropertiesProcessor.isPropertiesFile(fullPath)) {
-        
+
+      } else if (PropertiesProcessor.isPropertiesFile(fullPath)) {
+
         p = PropertiesProcessor.asProperties(stream);
-      
-      }else {
-        
+
+      } else {
+
         log.warn("Unable to process file " + fullPath + ". No compatible file processor found.");
-        
+
       }
-      
+
 
     } catch (FileNotFoundException e) {
 
@@ -120,12 +120,6 @@ public class DefaultFilesystemSource implements ConfigSource {
 
       } while (new File(propertiesPath).getParent() != null);
     }
-
-    // Finally, check classpath
-    // if (searchClasspath) {
-    strategy.addConfig(fetchConfig("classpath:/config/", propertiesFileName));
-    strategy.addConfig(fetchConfig("classpath:", propertiesFileName));
-    // }
 
     return strategy.merge();
 

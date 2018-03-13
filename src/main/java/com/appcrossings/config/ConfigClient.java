@@ -174,8 +174,13 @@ public class ConfigClient implements Config {
   public <T> T getProperty(String key, Class<T> clazz) {
 
     String value = loadedProperties.get().getProperty(key);
-    value = strings.fill(value);
-    return strings.cast(value, clazz);
+
+    if (StringUtils.hasText(value)) {
+      value = strings.fill(value);
+      return strings.cast(value, clazz);
+    }
+
+    return null;
   }
 
   public <T> T getProperty(String key, Class<T> clazz, T value) {
@@ -188,7 +193,7 @@ public class ConfigClient implements Config {
     return value;
 
   }
-  
+
   public Properties getProperties() {
     Properties props = new Properties();
     props.putAll(loadedProperties.get());
