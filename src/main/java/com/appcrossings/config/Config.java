@@ -1,5 +1,7 @@
 package com.appcrossings.config;
 
+import java.util.Properties;
+
 /**
  * Interface for configuration implementations.
  * 
@@ -38,5 +40,11 @@ public interface Config {
    * @return the property value case to the type provided. Returns null if no property is found
    */
   public <T>T getProperty(String key, Class<T> clazz, T defaultVal);
+  
+  /**
+   * 
+   * @return All loaded properties. Empty properties if none loaded.
+   */
+  public Properties getProperties();
 
 }

@@ -48,7 +48,7 @@ public class ConfigClient implements Config {
 
   protected final Environment envUtil = new Environment();
 
-  protected String hostsFileName = DEFAULT_HOSTS_FILE_NAME;
+  protected String hostsNamePattern = DEFAULT_HOSTS_FILE_NAME;
 
   private final AtomicReference<Properties> loadedProperties = new AtomicReference<>();
 
@@ -58,13 +58,37 @@ public class ConfigClient implements Config {
 
   private Method method = Method.HOST_FILE;
 
-  protected String propertiesFileName = DEFAULT_PROPERTIES_FILE_NAME;
+  protected String fileNamePattern = DEFAULT_PROPERTIES_FILE_NAME;
 
-  protected boolean searchClasspath = SEARCH_CLASSPATH;
+  protected boolean traverseClasspath = SEARCH_CLASSPATH;
 
   protected final String startLocation;
 
   protected StringUtils strings;
+
+  public String getHostsNamePattern() {
+    return hostsNamePattern;
+  }
+
+  public void setHostsNamePattern(String hostsNamePattern) {
+    this.hostsNamePattern = hostsNamePattern;
+  }
+
+  public String getFileNamePattern() {
+    return fileNamePattern;
+  }
+
+  public boolean isTraverseClasspath() {
+    return traverseClasspath;
+  }
+
+  public void setTraverseClasspath(boolean traverseClasspath) {
+    this.traverseClasspath = traverseClasspath;
+  }
+
+  public void setFileNamePattern(String fileNamePattern) {
+    this.fileNamePattern = fileNamePattern;
+  }
 
   private AtomicReference<Timer> timer = new AtomicReference<Timer>();
 
@@ -80,13 +104,13 @@ public class ConfigClient implements Config {
       getEnvironment().setHostName(props.getProperty(Config.HOST_NAME));
 
     if (props.containsKey(Config.HOST_FILE_NAME))
-      this.hostsFileName = props.getProperty(Config.HOST_FILE_NAME);
+      this.hostsNamePattern = props.getProperty(Config.HOST_FILE_NAME);
 
     if (props.containsKey(Config.PROPERTIES_FILE_NAME))
-      this.propertiesFileName = props.getProperty(Config.PROPERTIES_FILE_NAME);
+      this.fileNamePattern = props.getProperty(Config.PROPERTIES_FILE_NAME);
 
     if (props.containsKey(Config.SEARCH_CLASSPATH))
-      this.searchClasspath = Boolean.parseBoolean(props.getProperty(Config.TRAVERSE_CLASSPATH));
+      this.traverseClasspath = Boolean.parseBoolean(props.getProperty(Config.TRAVERSE_CLASSPATH));
 
     if (props.containsKey(Config.REFRESH_RATE))
       this.timerTTL = Integer.parseInt((String) props.getProperty(Config.REFRESH_RATE));
@@ -125,7 +149,7 @@ public class ConfigClient implements Config {
    */
   public ConfigClient(String path, int refresh, Method method) throws Exception {
     this(path, method);
-    setRefreshRate(refresh);
+    this.timerTTL = refresh;
   }
 
   /**
@@ -164,6 +188,12 @@ public class ConfigClient implements Config {
     return value;
 
   }
+  
+  public Properties getProperties() {
+    Properties props = new Properties();
+    props.putAll(loadedProperties.get());
+    return props;
+  }
 
   public void init() {
 
@@ -177,7 +207,7 @@ public class ConfigClient implements Config {
 
       ConfigSource configSource = this.configSource.resolveSource(startLocation);
 
-      Properties hosts = configSource.resolveConfigPath(startLocation, hostsFileName);
+      Properties hosts = configSource.resolveConfigPath(startLocation, hostsNamePattern);
 
       if (encryptor != null)
         hosts = new EncryptableProperties(hosts, encryptor);
@@ -196,7 +226,7 @@ public class ConfigClient implements Config {
 
       logger.debug("Searching for properties beginning at: " + startPath);
 
-      Properties ps = configSource.traverseConfigs(startPath, propertiesFileName, mergeStrategy);
+      Properties ps = configSource.traverseConfigs(startPath, fileNamePattern, mergeStrategy);
 
       if (encryptor != null)
         ps = new EncryptableProperties(ps, encryptor);
