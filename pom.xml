@@ -44,6 +44,11 @@
 			<groupId>org.yaml</groupId>
 			<artifactId>snakeyaml</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.jsoniter</groupId>
+			<artifactId>jsoniter</artifactId>
+			<version>0.9.21</version>
+		</dependency>
 	</dependencies>
 	<parent>
 		<groupId>com.appcrossings.config</groupId>
