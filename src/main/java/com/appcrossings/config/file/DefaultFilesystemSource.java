@@ -12,7 +12,10 @@ import org.slf4j.LoggerFactory;
 import com.appcrossings.config.ConfigSource;
 import com.appcrossings.config.ConfigSourceResolver;
 import com.appcrossings.config.MergeStrategy;
+import com.appcrossings.config.util.JsonProcessor;
+import com.appcrossings.config.util.PropertiesProcessor;
 import com.appcrossings.config.util.StringUtils;
+import com.appcrossings.config.util.YamlProcessor;
 
 public class DefaultFilesystemSource implements ConfigSource {
 
@@ -67,7 +70,25 @@ public class DefaultFilesystemSource implements ConfigSource {
     try (InputStream stream = getFileStream(fullPath);) {
 
       log.info("Attempting " + fullPath);
-      p.load(stream);
+      
+      if(JsonProcessor.isJsonFile(fullPath)) {
+        
+        p = JsonProcessor.asProperties(stream);
+        
+      }else if(YamlProcessor.isYamlFile(fullPath)) {
+        
+        p = YamlProcessor.asProperties(stream);
+        
+      }else if(PropertiesProcessor.isPropertiesFile(fullPath)) {
+        
+        p = PropertiesProcessor.asProperties(stream);
+      
+      }else {
+        
+        log.warn("Unable to process file " + fullPath + ". No compatible file processor found.");
+        
+      }
+      
 
     } catch (FileNotFoundException e) {
 

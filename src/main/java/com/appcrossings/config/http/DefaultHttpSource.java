@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory;
 import com.appcrossings.config.ConfigSource;
 import com.appcrossings.config.ConfigSourceResolver;
 import com.appcrossings.config.MergeStrategy;
+import com.appcrossings.config.util.JsonProcessor;
+import com.appcrossings.config.util.PropertiesProcessor;
+import com.appcrossings.config.util.YamlProcessor;
 
 public class DefaultHttpSource implements ConfigSource {
 
@@ -32,8 +35,25 @@ public class DefaultHttpSource implements ConfigSource {
     if (isURL(fullPath)) {
       try (InputStream stream = new URL(fullPath).openStream()) {
 
-        if (stream != null)
-          p.load(stream);
+        log.info("Attempting " + fullPath);
+
+        if (JsonProcessor.isJsonFile(fullPath)) {
+
+          p = JsonProcessor.asProperties(stream);
+
+        } else if (YamlProcessor.isYamlFile(fullPath)) {
+
+          p = YamlProcessor.asProperties(stream);
+
+        } else if (PropertiesProcessor.isPropertiesFile(fullPath)) {
+
+          p = PropertiesProcessor.asProperties(stream);
+
+        } else {
+
+          log.warn("Unable to process file " + fullPath + ". No compatible file processor found.");
+
+        }
 
       } catch (IOException e) {
         log.error(e.getMessage(), e);
@@ -58,7 +78,8 @@ public class DefaultHttpSource implements ConfigSource {
   }
 
   @Override
-  public Properties traverseConfigs(String propertiesPath, String propertiesFileName, MergeStrategy strategy) {
+  public Properties traverseConfigs(String propertiesPath, String propertiesFileName,
+      MergeStrategy strategy) {
     // TODO Auto-generated method stub
     return null;
   }

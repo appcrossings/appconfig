@@ -10,14 +10,15 @@ import org.yaml.snakeyaml.Yaml;
 
 public class YamlProcessor {
 
-  private final Yaml yaml = new Yaml();
+  public static boolean isYamlFile(String path) {
 
-  public YamlProcessor() {
-
+    assert StringUtils.hasText(path) : "Path was null or empty";
+    return (path.toLowerCase().endsWith(".yaml") || path.toLowerCase().endsWith(".yml"));
   }
 
-  public Properties asProperties(InputStream stream) {
+  public static Properties asProperties(InputStream stream) {
 
+    Yaml yaml = new Yaml();
     final Properties properties = new Properties();
     LinkedHashMap<String, Object> map = (LinkedHashMap) yaml.load(stream);
 
@@ -27,7 +28,7 @@ public class YamlProcessor {
     return properties;
   }
 
-  private void recurse(List<Object> list, StringBuilder builder, Properties props) {
+  private static void recurse(List<Object> list, StringBuilder builder, Properties props) {
 
     final String node = builder.toString();
 
@@ -35,7 +36,7 @@ public class YamlProcessor {
     for (Object k : list) {
 
       if (k instanceof String) {
-        
+
         String key = builder.toString() + "[" + i + "]";
         props.put(key, k);
 
@@ -43,10 +44,10 @@ public class YamlProcessor {
 
         recurse((Map) k, builder, props);
 
-      } else if(k instanceof ArrayList) {
-        
+      } else if (k instanceof ArrayList) {
+
         recurse((List) k, builder, props);
-        
+
       }
 
       builder = new StringBuilder(node);
@@ -55,7 +56,7 @@ public class YamlProcessor {
 
   }
 
-  private void recurse(Map<String, Object> map, StringBuilder builder, Properties props) {
+  private static void recurse(Map<String, Object> map, StringBuilder builder, Properties props) {
 
     final String node = builder.toString();
 

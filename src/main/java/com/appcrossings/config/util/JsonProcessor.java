@@ -12,23 +12,28 @@ import com.jsoniter.any.Any;
 
 public class JsonProcessor {
 
+  public static boolean isJsonFile(String path) {
+
+    assert StringUtils.hasText(path) : "Path was null or empty";
+    return path.toLowerCase().endsWith(".json");
+  }
 
 
-  public Properties asProperties(InputStream stream) {
+  public static Properties asProperties(InputStream stream) {
 
     Properties props = new Properties();
 
     try {
-      
+
       Any body = JsonIterator.deserialize(IOUtils.toByteArray(stream));
       StringBuilder builder = new StringBuilder();
 
-      if(body.valueType().equals(ValueType.OBJECT)) {
+      if (body.valueType().equals(ValueType.OBJECT)) {
         recurse(body.asMap(), builder, props);
-      }else if(body.valueType().equals(ValueType.ARRAY)) {
+      } else if (body.valueType().equals(ValueType.ARRAY)) {
         recurse(body.asList(), builder, props);
       }
-     
+
 
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -37,7 +42,7 @@ public class JsonProcessor {
     return props;
   }
 
-  private void recurse(List<Any> list, StringBuilder builder, Properties props) {
+  private static void recurse(List<Any> list, StringBuilder builder, Properties props) {
 
     final String node = builder.toString();
 
@@ -66,7 +71,7 @@ public class JsonProcessor {
 
   }
 
-  private void recurse(Map<String, Any> map, StringBuilder builder, Properties props) {
+  private static void recurse(Map<String, Any> map, StringBuilder builder, Properties props) {
 
     final String node = builder.toString();
 
