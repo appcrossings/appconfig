@@ -6,22 +6,27 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.appcrossings.config.ConfigSource;
-import com.appcrossings.config.ConfigSourceResolver;
-import com.appcrossings.config.MergeStrategy;
+import com.appcrossings.config.Config;
+import com.appcrossings.config.source.ConfigSource;
+import com.appcrossings.config.source.RepoDef;
+import com.appcrossings.config.source.StreamingConfigSource;
 import com.appcrossings.config.util.JsonProcessor;
 import com.appcrossings.config.util.PropertiesProcessor;
 import com.appcrossings.config.util.StringUtils;
 import com.appcrossings.config.util.YamlProcessor;
 
-public class DefaultFilesystemSource implements ConfigSource {
+public class DefaultFilesystemSource implements ConfigSource, StreamingConfigSource {
 
   private final static Logger log = LoggerFactory.getLogger(DefaultFilesystemSource.class);
+  private FileRepoDef repoConfig;
 
-  public InputStream getFileStream(String fullPath) throws FileNotFoundException, IOException {
+  @Override
+  public InputStream stream(String fullPath, Optional<RepoDef> repo) throws IOException {
 
     InputStream stream = null;
 
@@ -61,13 +66,21 @@ public class DefaultFilesystemSource implements ConfigSource {
   }
 
   @Override
-  public Properties fetchConfig(String propertiesPath, String propertiesFileName) {
+  public Properties fetchConfig(String propertiesPath, Optional<RepoDef> repo) {
+
+    String fileName = Config.DEFAULT_PROPERTIES_FILE_NAME;
+
+    if (repo.isPresent()) {
+      assert repo.get() instanceof FileRepoDef : "Repo definitino must be file repo def";
+      FileRepoDef fRepo = (FileRepoDef) repo.get();
+      fileName = fRepo.getConfigFileName();
+    }
 
     Properties p = new Properties();
 
-    String fullPath = resolveFullFilePath(propertiesPath, propertiesFileName);
+    String fullPath = resolveFullFilePath(propertiesPath, fileName);
 
-    try (InputStream stream = getFileStream(fullPath);) {
+    try (InputStream stream = stream(fullPath, repo)) {
 
       log.info("Attempting " + fullPath);
 
@@ -102,27 +115,43 @@ public class DefaultFilesystemSource implements ConfigSource {
     return p;
   }
 
-  public Properties resolveConfigPath(String hostsFile, String hostsFileName) {
+  public Properties fetchHostEntries(String hostsFile, String hostsFileName) {
 
     log.info("Fetching hosts file from path: " + hostsFile);
-    return fetchConfig(hostsFile, hostsFileName);
+    String fullPath = resolveFullFilePath(hostsFile, hostsFileName);
+    return fetchConfig(fullPath, Optional.empty());
   }
 
-  public Properties traverseConfigs(String propertiesPath, String propertiesFileName,
-      MergeStrategy strategy) {
+  public Properties traverseConfigs(String propertiesPath, Optional<RepoDef> repo) {
 
-    if (StringUtils.hasText(propertiesPath)) {
+    try {
 
-      do {
+      FileRepoDef fRepo = null;
 
-        strategy.addConfig(fetchConfig(propertiesPath, propertiesFileName));
-        propertiesPath = stripDir(propertiesPath);
+      if (repo.isPresent()) {
+        assert repo.get() instanceof FileRepoDef : "Repo definitino must be file repo def";
+        fRepo = (FileRepoDef) repo.get();
+      } else {
+        fRepo = new FileRepoDef();
+      }
 
-      } while (new File(propertiesPath).getParent() != null);
+      if (StringUtils.hasText(propertiesPath)) {
+
+        do {
+
+          fRepo.getStrategy().addConfig(fetchConfig(propertiesPath, repo));
+          propertiesPath = stripDir(propertiesPath);
+
+        } while (new File(propertiesPath).getParent() != null);
+      }
+
+      return fRepo.getStrategy().merge();
+
+    } catch (Exception e) {
+      // should never happen
     }
 
-    return strategy.merge();
-
+    return new Properties();
   }
 
   protected String stripDir(String path) {
@@ -154,20 +183,31 @@ public class DefaultFilesystemSource implements ConfigSource {
   protected String resolveFullFilePath(String propertiesPath, String propertiesFileName) {
     String fullPath = "";
 
-    if (propertiesPath.toLowerCase().contains(propertiesFileName.toLowerCase()))
+    if (propertiesPath.toLowerCase().contains(propertiesFileName.toLowerCase())) {
+
       fullPath = propertiesPath;
-    else if (!propertiesPath.endsWith(File.separator)
-        && !propertiesFileName.startsWith(File.separator))
+
+    } else if (propertiesPath.substring(propertiesPath.lastIndexOf(File.separator)).contains(".")) {
+
+      fullPath = propertiesPath;
+
+    } else if (!propertiesPath.endsWith(File.separator)
+        && !propertiesFileName.startsWith(File.separator)) {
+
       fullPath = propertiesPath + "/" + propertiesFileName;
-    else
+
+    } else {
+
       fullPath = propertiesPath + propertiesFileName;
+
+    }
 
     return fullPath;
   }
 
   @Override
   public String getSourceName() {
-    return ConfigSourceResolver.FILE_SYSTEM;
+    return ConfigSource.FILE_SYSTEM;
   }
 
   @Override
@@ -177,6 +217,20 @@ public class DefaultFilesystemSource implements ConfigSource {
     return (prefix == "" || prefix.equals(File.separator)
         || prefix.toLowerCase().startsWith("file:")
         || prefix.toLowerCase().startsWith("classpath"));
+  }
+
+  @Override
+  public ConfigSource newInstance(String name, Map<String, Object> values) {
+
+    DefaultFilesystemSource s = new DefaultFilesystemSource();
+    FileRepoDef def = new FileRepoDef(name, values);
+    s.repoConfig = (FileRepoDef) def;
+    return s;
+  }
+
+  @Override
+  public RepoDef getSourceConfiguration() {
+    return repoConfig;
   }
 
 }

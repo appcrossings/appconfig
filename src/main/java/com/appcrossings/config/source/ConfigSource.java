@@ -1,8 +1,13 @@
-package com.appcrossings.config;
+package com.appcrossings.config.source;
 
+import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 
 public interface ConfigSource {
+  
+  public static final String FILE_SYSTEM = "file";
+  public static final String HTTPS = "http";
 
     /**
      * Retrieves a single node of the config given by the properties path. No traversal.
@@ -10,7 +15,7 @@ public interface ConfigSource {
      * @param propertiesFileName
      * @return
      */
-    public Properties fetchConfig(String propertiesPath, String propertiesFileName);
+    public Properties fetchConfig(String propertiesPath, Optional<RepoDef> repo);
     
     /**
      * Traverses a config tree per the underlying implementation's mechanism. 
@@ -19,7 +24,7 @@ public interface ConfigSource {
      * @param propertiesFileName
      * @return
      */
-	public Properties traverseConfigs(String propertiesPath, String propertiesFileName, MergeStrategy strategy);
+	public Properties traverseConfigs(String propertiesPath, Optional<RepoDef> repo);
 	
 	/**
 	 * Resolves the config node to start traversal at via hosts entry. 
@@ -28,7 +33,7 @@ public interface ConfigSource {
 	 * @param hostsFileName
 	 * @return
 	 */
-	public Properties resolveConfigPath(String hostsFile, String hostsFileName);
+	public Properties fetchHostEntries(String hostsFile, String hostsFileName);
 	
 	/**
 	 * A unique name for this config source type
@@ -45,5 +50,9 @@ public interface ConfigSource {
 	 * @return
 	 */
 	public boolean isCompatible(String path);
-
+	
+	public ConfigSource newInstance(String name, Map<String, Object> values);
+	
+	public RepoDef getSourceConfiguration();
+	
 }

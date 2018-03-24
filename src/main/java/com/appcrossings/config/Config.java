@@ -1,6 +1,7 @@
 package com.appcrossings.config;
 
 import java.util.Properties;
+import com.appcrossings.config.strategy.DefaultMergeStrategy;
 
 /**
  * Interface for configuration implementations.
@@ -23,6 +24,8 @@ public interface Config {
   public final static String HOST_NAME = "HOSTNAME";
   public final static String CONFIG_LOOKUP_STRATEGY = "config.strategy.lookup";
   public final static String CONFIG_MERGE_STRATEGY= "config.strategy.merge";
+  
+  public final static String DEFAULT_MERGE_STRATEGY_CLASS = DefaultMergeStrategy.class.getName();
 
   /**
    * 

@@ -1,5 +1,6 @@
 package com.appcrossings.config;
 
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -9,6 +10,7 @@ import org.jasypt.encryption.pbe.config.EnvironmentStringPBEConfig;
 import org.jasypt.properties.EncryptableProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.strategy.DefaultConfigLookupStrategy;
 import com.appcrossings.config.strategy.DefaultMergeStrategy;
 import com.appcrossings.config.util.Environment;
@@ -22,7 +24,7 @@ import com.appcrossings.config.util.StringUtils;
 public class ConfigClient implements Config {
 
   public enum Method {
-    DIRECT_PATH, HOST_FILE;
+    DIRECT_PATH, HOST_FILE, REPO_DEFINITION;
   }
 
   private class ReloadTask extends TimerTask {
@@ -42,7 +44,11 @@ public class ConfigClient implements Config {
 
   private final static Logger logger = LoggerFactory.getLogger(ConfigClient.class);
 
-  protected final ConfigSourceResolver configSource = new ConfigSourceResolver();
+  protected ConfigSourceResolver sourceResolver;
+
+  public ConfigSourceResolver getSourceResolver() {
+    return sourceResolver;
+  }
 
   private StandardPBEStringEncryptor encryptor = null;
 
@@ -56,7 +62,7 @@ public class ConfigClient implements Config {
 
   private MergeStrategy mergeStrategy = new DefaultMergeStrategy();
 
-  private Method method = Method.HOST_FILE;
+  private final Method method;
 
   protected String fileNamePattern = DEFAULT_PROPERTIES_FILE_NAME;
 
@@ -117,6 +123,8 @@ public class ConfigClient implements Config {
 
     if (props.containsKey(Config.METHOD))
       this.method = Method.valueOf(props.getProperty(Config.METHOD));
+    else
+      this.method = Method.HOST_FILE;
 
     if (props.containsKey(Config.CONFIG_MERGE_STRATEGY))
       this.mergeStrategy = (MergeStrategy) props.get(Config.CONFIG_MERGE_STRATEGY);
@@ -124,19 +132,8 @@ public class ConfigClient implements Config {
     if (props.containsKey(Config.CONFIG_LOOKUP_STRATEGY))
       this.lookupStrategy = (ConfigLookupStrategy) props.get(Config.CONFIG_LOOKUP_STRATEGY);
 
-
     this.strings = new StringUtils(envUtil.getProperties());
 
-  }
-
-  /**
-   * 
-   * @param path The path of the hosts.properties file
-   * @throws Exception
-   */
-  public ConfigClient(String path) throws Exception {
-    this.strings = new StringUtils(envUtil.getProperties());
-    this.startLocation = path;
   }
 
   /**
@@ -159,7 +156,7 @@ public class ConfigClient implements Config {
    * @throws Exception
    */
   public ConfigClient(String path, Method method) throws Exception {
-    this(path);
+    this.startLocation = path;
     this.method = method;
   }
 
@@ -206,13 +203,20 @@ public class ConfigClient implements Config {
     String hostName = envUtil.detectHostName();
     String startPath = null;
 
-    if (this.method.equals(Method.HOST_FILE)) {
+    if (this.method.equals(Method.REPO_DEFINITION)) {
 
+      startPath = this.startLocation;
+      this.sourceResolver = new ConfigSourceResolver(startPath);
+
+    } else if (this.method.equals(Method.HOST_FILE)) {
+
+      this.sourceResolver = new ConfigSourceResolver();
+      
       logger.info("Loading hosts file at " + startLocation);
 
-      ConfigSource configSource = this.configSource.resolveSource(startLocation);
+      ConfigSource configSource = this.sourceResolver.resolveByUri(startLocation);
 
-      Properties hosts = configSource.resolveConfigPath(startLocation, hostsNamePattern);
+      Properties hosts = configSource.fetchHostEntries(startLocation, hostsNamePattern);
 
       if (encryptor != null)
         hosts = new EncryptableProperties(hosts, encryptor);
@@ -220,19 +224,23 @@ public class ConfigClient implements Config {
       startPath = lookupStrategy.lookupConfigPath(hosts, envUtil.getProperties());
 
     } else if (this.method.equals(Method.DIRECT_PATH)) {
+      
+      this.sourceResolver = new ConfigSourceResolver();
       startPath = this.startLocation;
+
     }
 
     if (StringUtils.hasText(startPath)) {
 
       mergeStrategy.clear();
 
-      ConfigSource configSource = this.configSource.resolveSource(startPath);
+      ConfigSource configSource = this.sourceResolver.resolveByUri(startPath);
 
       logger.debug("Searching for properties beginning at: " + startPath);
 
-      Properties ps = configSource.traverseConfigs(startPath, fileNamePattern, mergeStrategy);
-
+      Properties ps = configSource.traverseConfigs(startPath, Optional.empty());
+      mergeStrategy.addConfig(ps);
+            
       if (encryptor != null)
         ps = new EncryptableProperties(ps, encryptor);
 

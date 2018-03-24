@@ -1,12 +1,13 @@
 package com.appcrossings.config.util;
 
 import java.io.InputStream;
+import java.util.Optional;
 import java.util.Properties;
 import org.junit.Assert;
 import org.junit.Test;
-import com.appcrossings.config.ConfigSource;
 import com.appcrossings.config.ConfigSourceResolver;
 import com.appcrossings.config.file.DefaultFilesystemSource;
+import com.appcrossings.config.source.ConfigSource;
 
 public class TestJsonProcessor {
   
@@ -17,8 +18,8 @@ public class TestJsonProcessor {
   @Test
   public void testFlattenYamlToProperties() throws Exception {
 
-    ConfigSource source = factory.resolveSource(jsonFile);
-    InputStream stream = ((DefaultFilesystemSource) source).getFileStream(jsonFile);
+    ConfigSource source = factory.resolveByUri(jsonFile);
+    InputStream stream = ((DefaultFilesystemSource) source).stream(jsonFile, Optional.empty());
     Properties props = proc.asProperties(stream);
 
     Assert.assertTrue(props.containsKey("property.1.name"));
@@ -36,8 +37,8 @@ public class TestJsonProcessor {
   @Test
   public void testFlattenYamlArrayToProperties() throws Exception {
 
-    ConfigSource source = factory.resolveSource(jsonFile);
-    InputStream stream = ((DefaultFilesystemSource) source).getFileStream(jsonFile);
+    ConfigSource source = factory.resolveByUri(jsonFile);
+    InputStream stream = ((DefaultFilesystemSource) source).stream(jsonFile, Optional.empty());
     Properties props = proc.asProperties(stream);
 
     Assert.assertTrue(props.containsKey("array.named[0]"));
