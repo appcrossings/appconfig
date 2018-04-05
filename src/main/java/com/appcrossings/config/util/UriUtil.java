@@ -11,10 +11,18 @@ public class UriUtil {
   private URL url;
   private URI host;
   private String fileName;
+  private boolean isClasspath = false;
 
   public UriUtil(String uri) {
     this.uri = URI.create(uri);
-    this.manipulated = this.uri.getPath();
+
+    if (uri.toLowerCase().startsWith("classpath"))
+      this.isClasspath = true;
+
+    if (StringUtils.hasText(this.uri.getPath()))
+      this.manipulated = this.uri.getPath();
+    else
+      this.manipulated = this.uri.getSchemeSpecificPart();
 
     if (hasFile()) {
       fileName =
@@ -66,14 +74,12 @@ public class UriUtil {
     return null;
   }
 
-  public URI stripPath() {
+  public void stripPath() {
 
     int i = this.manipulated.lastIndexOf("/");
 
     if (hasPath())
       this.manipulated = this.manipulated.substring(0, i);
-
-    return URI.create(toString());
 
   }
 
@@ -88,6 +94,8 @@ public class UriUtil {
       if (this.uri.getPort() > 0)
         s.append(":" + this.uri.getPort());
 
+    } else if (isClasspath) {
+      s.append(this.uri.toString().substring(0, this.uri.toString().indexOf(":")) + ":");
     }
 
     s.append(this.manipulated);

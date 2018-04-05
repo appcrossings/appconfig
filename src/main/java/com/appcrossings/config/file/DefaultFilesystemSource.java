@@ -17,6 +17,7 @@ import com.appcrossings.config.source.StreamingConfigSource;
 import com.appcrossings.config.util.JsonProcessor;
 import com.appcrossings.config.util.PropertiesProcessor;
 import com.appcrossings.config.util.StringUtils;
+import com.appcrossings.config.util.UriUtil;
 import com.appcrossings.config.util.YamlProcessor;
 
 public class DefaultFilesystemSource implements ConfigSource, StreamingConfigSource {
@@ -211,29 +212,21 @@ public class DefaultFilesystemSource implements ConfigSource, StreamingConfigSou
 
   }
 
-  protected String stripDir(String path) {
-
-    int i = path.lastIndexOf("/");
-
-    if (i > 0)
-      return path.substring(0, i);
-
-    return "";
-
-  }
-
   public Properties traverseConfigs(String propertiesPath) {
 
     try {
 
       if (StringUtils.hasText(propertiesPath)) {
 
+        final UriUtil uri = new UriUtil(propertiesPath);
+
         do {
 
-          repoConfig.getStrategy().addConfig(fetchConfig(propertiesPath));
-          propertiesPath = stripDir(propertiesPath);
+          Properties props = fetchConfig(uri.toString());
+          repoConfig.getStrategy().addConfig(props);
+          uri.stripPath();
 
-        } while (new File(propertiesPath).getParent() != null);
+        } while (uri.hasPath());
       }
 
       return repoConfig.getStrategy().merge();
