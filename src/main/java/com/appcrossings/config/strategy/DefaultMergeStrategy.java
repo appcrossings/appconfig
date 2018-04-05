@@ -16,23 +16,24 @@ public class DefaultMergeStrategy implements MergeStrategy {
   }
 
   @Override
+  public void clear() {
+    all.clear();
+  }
+
+  @Override
   public Properties merge() {
 
     List<Properties> copy = new ArrayList<>(all);
     Collections.reverse(copy); // sort from root to highest
 
     Properties ps = new Properties();
-    
+
     for (Properties p : copy) {
       ps.putAll(p);
     }
-
+    clear();
+    
     return ps;
-  }
-
-  @Override
-  public void clear() {
-    all.clear();
   }
 
 }

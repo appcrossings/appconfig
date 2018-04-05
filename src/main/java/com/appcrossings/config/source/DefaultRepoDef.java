@@ -1,21 +1,20 @@
 package com.appcrossings.config.source;
 
 import java.io.Serializable;
-import java.util.Map;
-import org.apache.commons.beanutils.BeanUtils;
 import com.appcrossings.config.Config;
 import com.appcrossings.config.MergeStrategy;
 
 @SuppressWarnings("serial")
-public class BaseRepoDef implements Serializable, RepoDef {
+public class DefaultRepoDef implements Serializable, RepoDef {
 
-  String mergeStrategy = Config.DEFAULT_MERGE_STRATEGY_CLASS;
-  MergeStrategy strategy;
-
-  protected String name;
   protected String context;
+  protected String mergeStrategy = Config.DEFAULT_MERGE_STRATEGY_CLASS;
+  protected String name;
+  protected MergeStrategy strategy;
 
-  protected BaseRepoDef() {
+  protected DefaultRepoDef() {
+
+    super();
 
     try {
       strategy = (MergeStrategy) Class.forName(mergeStrategy).newInstance();
@@ -24,20 +23,21 @@ public class BaseRepoDef implements Serializable, RepoDef {
     }
   }
 
-  public BaseRepoDef(String name, Map<String, Object> values) {
+  public DefaultRepoDef(String name) {
+
     super();
-    this.name = name;
 
     try {
-      if (values != null && !values.isEmpty())
-        BeanUtils.copyProperties(this, values);
-
-      if (strategy != null && !mergeStrategy.equalsIgnoreCase(strategy.getClass().getName()))
-        strategy = (MergeStrategy) Class.forName(mergeStrategy).newInstance();
-
+      strategy = (MergeStrategy) Class.forName(mergeStrategy).newInstance();
     } catch (Exception e) {
       throw new IllegalArgumentException(e);
     }
+
+    this.name = name;
+  }
+
+  public String getContext() {
+    return context;
   }
 
   @Override
@@ -50,8 +50,8 @@ public class BaseRepoDef implements Serializable, RepoDef {
     return name;
   }
 
-  public String getContext() {
-    return context;
+  public MergeStrategy getStrategy() {
+    return strategy;
   }
 
   public void setContext(String context) {
@@ -64,10 +64,6 @@ public class BaseRepoDef implements Serializable, RepoDef {
 
   public void setName(String name) {
     this.name = name;
-  }
-
-  public MergeStrategy getStrategy() {
-    return strategy;
   }
 
   public void setStrategy(MergeStrategy strategy) {

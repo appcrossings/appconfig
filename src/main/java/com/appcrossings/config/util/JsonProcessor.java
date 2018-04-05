@@ -12,13 +12,6 @@ import com.jsoniter.any.Any;
 
 public class JsonProcessor {
 
-  public static boolean isJsonFile(String path) {
-
-    assert StringUtils.hasText(path) : "Path was null or empty";
-    return path.toLowerCase().endsWith(".json");
-  }
-
-
   public static Properties asProperties(InputStream stream) {
 
     Properties props = new Properties();
@@ -40,6 +33,13 @@ public class JsonProcessor {
     }
 
     return props;
+  }
+
+
+  public static boolean isJsonFile(String path) {
+
+    assert StringUtils.hasText(path) : "Path was null or empty";
+    return path.toLowerCase().endsWith(".json");
   }
 
   private static void recurse(List<Any> list, StringBuilder builder, Properties props) {

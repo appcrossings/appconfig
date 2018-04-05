@@ -10,7 +10,7 @@ import com.appcrossings.config.Config;
 import com.appcrossings.config.ConfigSourceResolver;
 import com.appcrossings.config.source.ConfigSource;
 
-public class TestLoadProperties {
+public class TestConfigSourceTraverse {
 
   private String host = "http://config.appcrossings.net";
   private Optional<ConfigSource> source;
@@ -24,8 +24,8 @@ public class TestLoadProperties {
 
   public void testPullHostFileFromAmazon() throws Exception {
 
-    Properties p =
-        source.get().fetchHostEntries(host + "/env/hosts.properties", Config.DEFAULT_HOSTS_FILE_NAME);
+    Properties p = source.get().fetchHostEntries(host + "/env/hosts.properties",
+        Config.DEFAULT_HOSTS_FILE_NAME);
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("kkarski-ibm"));
 
@@ -34,7 +34,7 @@ public class TestLoadProperties {
   @Test
   public void testPullPropertiesFileFromAmazon() throws Exception {
 
-    Properties p = source.get().fetchConfig(host + "/env/dev/", Optional.of(new HttpRepoDef()));
+    Properties p = source.get().fetchConfig(host + "/env/dev/");
 
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));

@@ -1,7 +1,6 @@
 package com.appcrossings.config.util;
 
 import java.io.InputStream;
-import java.util.Optional;
 import java.util.Properties;
 import org.junit.Assert;
 import org.junit.Test;
@@ -10,7 +9,7 @@ import com.appcrossings.config.file.DefaultFilesystemSource;
 import com.appcrossings.config.source.ConfigSource;
 
 public class TestJsonProcessor {
-  
+
   JsonProcessor proc = new JsonProcessor();
   private ConfigSourceResolver factory = new ConfigSourceResolver();
   private final String jsonFile = "classpath:/env/dev/json/default.json";
@@ -19,7 +18,7 @@ public class TestJsonProcessor {
   public void testFlattenYamlToProperties() throws Exception {
 
     ConfigSource source = factory.resolveByUri(jsonFile);
-    InputStream stream = ((DefaultFilesystemSource) source).stream(jsonFile, Optional.empty());
+    InputStream stream = ((DefaultFilesystemSource) source).stream(jsonFile);
     Properties props = proc.asProperties(stream);
 
     Assert.assertTrue(props.containsKey("property.1.name"));
@@ -33,12 +32,12 @@ public class TestJsonProcessor {
     Assert.assertEquals("bonus2", props.getProperty("bonus.1.property"));
 
   }
-  
+
   @Test
   public void testFlattenYamlArrayToProperties() throws Exception {
 
     ConfigSource source = factory.resolveByUri(jsonFile);
-    InputStream stream = ((DefaultFilesystemSource) source).stream(jsonFile, Optional.empty());
+    InputStream stream = ((DefaultFilesystemSource) source).stream(jsonFile);
     Properties props = proc.asProperties(stream);
 
     Assert.assertTrue(props.containsKey("array.named[0]"));
@@ -46,7 +45,7 @@ public class TestJsonProcessor {
 
     Assert.assertTrue(props.containsKey("array.named[1]"));
     Assert.assertEquals("value2", props.getProperty("array.named[1]"));
-    
+
     Assert.assertTrue(props.containsKey("array.named[2]"));
     Assert.assertEquals("value3", props.getProperty("array.named[2]"));
 
@@ -55,7 +54,7 @@ public class TestJsonProcessor {
 
     Assert.assertTrue(props.containsKey("array.named2.value5.sub"));
     Assert.assertEquals("5", props.getProperty("array.named2.value5.sub"));
-    
+
     Assert.assertTrue(props.containsKey("array.named2.value6.sub"));
     Assert.assertEquals("value", props.getProperty("array.named2.value6.sub"));
   }

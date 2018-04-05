@@ -1,6 +1,5 @@
 package com.appcrossings.config;
 
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -24,7 +23,7 @@ import com.appcrossings.config.util.StringUtils;
 public class ConfigClient implements Config {
 
   public enum Method {
-    DIRECT_PATH, HOST_FILE, REPO_DEFINITION;
+    DIRECT_PATH, HOST_FILE;
   }
 
   private class ReloadTask extends TimerTask {
@@ -44,15 +43,11 @@ public class ConfigClient implements Config {
 
   private final static Logger logger = LoggerFactory.getLogger(ConfigClient.class);
 
-  protected ConfigSourceResolver sourceResolver;
-
-  public ConfigSourceResolver getSourceResolver() {
-    return sourceResolver;
-  }
-
   private StandardPBEStringEncryptor encryptor = null;
 
   protected final Environment envUtil = new Environment();
+
+  protected String fileNamePattern = DEFAULT_PROPERTIES_FILE_NAME;
 
   protected String hostsNamePattern = DEFAULT_HOSTS_FILE_NAME;
 
@@ -64,47 +59,31 @@ public class ConfigClient implements Config {
 
   private final Method method;
 
-  protected String fileNamePattern = DEFAULT_PROPERTIES_FILE_NAME;
+  protected final String repoDefLocation;
 
-  protected boolean traverseClasspath = SEARCH_CLASSPATH;
+  protected ConfigSourceResolver sourceResolver;
 
   protected final String startLocation;
 
   protected StringUtils strings;
 
-  public String getHostsNamePattern() {
-    return hostsNamePattern;
-  }
-
-  public void setHostsNamePattern(String hostsNamePattern) {
-    this.hostsNamePattern = hostsNamePattern;
-  }
-
-  public String getFileNamePattern() {
-    return fileNamePattern;
-  }
-
-  public boolean isTraverseClasspath() {
-    return traverseClasspath;
-  }
-
-  public void setTraverseClasspath(boolean traverseClasspath) {
-    this.traverseClasspath = traverseClasspath;
-  }
-
-  public void setFileNamePattern(String fileNamePattern) {
-    this.fileNamePattern = fileNamePattern;
-  }
-
   private AtomicReference<Timer> timer = new AtomicReference<Timer>();
 
   protected Integer timerTTL = 0;
+
+  protected boolean traverseClasspath = SEARCH_CLASSPATH;
 
   public ConfigClient(Properties props) throws Exception {
 
     assert !props
         .containsKey(Config.PATH) : "File path to hosts.properties or start location is mandatory";
+
     this.startLocation = props.getProperty(Config.PATH);
+
+    if (props.containsKey(Config.REPO_DEF_PATH))
+      this.repoDefLocation = props.getProperty(Config.REPO_DEF_PATH);
+    else
+      this.repoDefLocation = null;
 
     if (props.containsKey(Config.HOST_NAME))
       getEnvironment().setHostName(props.getProperty(Config.HOST_NAME));
@@ -158,14 +137,41 @@ public class ConfigClient implements Config {
   public ConfigClient(String path, Method method) throws Exception {
     this.startLocation = path;
     this.method = method;
+    this.repoDefLocation = null;
+  }
+
+  /**
+   * 
+   * @param path The path of the starting point for config exploration. Can be a default.properties
+   *        or hosts.properties path
+   * @throws Exception
+   */
+  public ConfigClient(String repoDefPath, String path, Method method) throws Exception {
+    this.startLocation = path;
+    this.method = method;
+    this.repoDefLocation = repoDefPath;
   }
 
   public Environment getEnvironment() {
     return envUtil;
   }
 
+  public String getFileNamePattern() {
+    return fileNamePattern;
+  }
+
+  public String getHostsNamePattern() {
+    return hostsNamePattern;
+  }
+
   public MergeStrategy getMergeStrategy() {
     return mergeStrategy;
+  }
+
+  public Properties getProperties() {
+    Properties props = new Properties();
+    props.putAll(loadedProperties.get());
+    return props;
   }
 
   public <T> T getProperty(String key, Class<T> clazz) {
@@ -191,10 +197,8 @@ public class ConfigClient implements Config {
 
   }
 
-  public Properties getProperties() {
-    Properties props = new Properties();
-    props.putAll(loadedProperties.get());
-    return props;
+  public ConfigSourceResolver getSourceResolver() {
+    return sourceResolver;
   }
 
   public void init() {
@@ -203,15 +207,14 @@ public class ConfigClient implements Config {
     String hostName = envUtil.detectHostName();
     String startPath = null;
 
-    if (this.method.equals(Method.REPO_DEFINITION)) {
-
-      startPath = this.startLocation;
-      this.sourceResolver = new ConfigSourceResolver(startPath);
-
-    } else if (this.method.equals(Method.HOST_FILE)) {
-
+    if (StringUtils.hasText(this.repoDefLocation)) {
+      this.sourceResolver = new ConfigSourceResolver(this.repoDefLocation);
+    } else {
       this.sourceResolver = new ConfigSourceResolver();
-      
+    }
+
+    if (this.method.equals(Method.HOST_FILE)) {
+
       logger.info("Loading hosts file at " + startLocation);
 
       ConfigSource configSource = this.sourceResolver.resolveByUri(startLocation);
@@ -224,8 +227,7 @@ public class ConfigClient implements Config {
       startPath = lookupStrategy.lookupConfigPath(hosts, envUtil.getProperties());
 
     } else if (this.method.equals(Method.DIRECT_PATH)) {
-      
-      this.sourceResolver = new ConfigSourceResolver();
+
       startPath = this.startLocation;
 
     }
@@ -238,9 +240,9 @@ public class ConfigClient implements Config {
 
       logger.debug("Searching for properties beginning at: " + startPath);
 
-      Properties ps = configSource.traverseConfigs(startPath, Optional.empty());
+      Properties ps = configSource.traverseConfigs(startPath);
       mergeStrategy.addConfig(ps);
-            
+
       if (encryptor != null)
         ps = new EncryptableProperties(ps, encryptor);
 
@@ -260,6 +262,18 @@ public class ConfigClient implements Config {
     strings = new StringUtils(mergeStrategy.merge());
     setRefreshRate(timerTTL);
 
+  }
+
+  public boolean isTraverseClasspath() {
+    return traverseClasspath;
+  }
+
+  public void setFileNamePattern(String fileNamePattern) {
+    this.fileNamePattern = fileNamePattern;
+  }
+
+  public void setHostsNamePattern(String hostsNamePattern) {
+    this.hostsNamePattern = hostsNamePattern;
   }
 
   public void setMergeStrategy(MergeStrategy mergeStrategy) {
@@ -312,5 +326,9 @@ public class ConfigClient implements Config {
    */
   public void setTextEncryptor(StandardPBEStringEncryptor config) {
     this.encryptor = config;
+  }
+
+  public void setTraverseClasspath(boolean traverseClasspath) {
+    this.traverseClasspath = traverseClasspath;
   }
 }

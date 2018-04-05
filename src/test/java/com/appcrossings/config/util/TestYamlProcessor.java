@@ -20,7 +20,7 @@ public class TestYamlProcessor {
 
     ConfigSource source = factory.resolveByUri(yamlFile);
     InputStream stream =
-        ((DefaultFilesystemSource) source).stream(yamlFile, Optional.empty());
+        ((DefaultFilesystemSource) source).stream(yamlFile);
     Properties props = proc.asProperties(stream);
 
     Assert.assertTrue(props.containsKey("property.1.name"));
@@ -40,7 +40,7 @@ public class TestYamlProcessor {
 
     ConfigSource source = factory.resolveByUri(yamlFile);
     InputStream stream =
-        ((DefaultFilesystemSource) source).stream(yamlFile, Optional.empty());
+        ((DefaultFilesystemSource) source).stream(yamlFile);
     Properties props = proc.asProperties(stream);
 
     Assert.assertTrue(props.containsKey("array.named[0]"));

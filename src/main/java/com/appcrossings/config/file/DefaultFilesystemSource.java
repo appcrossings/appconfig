@@ -6,12 +6,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.appcrossings.config.Config;
 import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.source.RepoDef;
 import com.appcrossings.config.source.StreamingConfigSource;
@@ -23,64 +22,16 @@ import com.appcrossings.config.util.YamlProcessor;
 public class DefaultFilesystemSource implements ConfigSource, StreamingConfigSource {
 
   private final static Logger log = LoggerFactory.getLogger(DefaultFilesystemSource.class);
-  private FileRepoDef repoConfig;
+  protected FileRepoDef repoConfig;
 
   @Override
-  public InputStream stream(String fullPath, Optional<RepoDef> repo) throws IOException {
-
-    InputStream stream = null;
-
-    if (isFilePath(fullPath)) {
-
-      String trimmed = fullPath.replaceFirst("file:", "");
-      stream = new FileInputStream(new File(trimmed));
-
-    } else if (isClasspath(fullPath)) {
-
-      String trimmed = fullPath.replaceFirst("classpath:", "");
-
-      if (!trimmed.startsWith(File.separator))
-        trimmed = File.separator + trimmed;
-      stream = this.getClass().getResourceAsStream(trimmed);
-
-    } else if (isPath(fullPath)) {
-
-      // could be relative to classpath or filesystem root (i.e. linux)
-
-      stream = this.getClass().getResourceAsStream(fullPath);
-
-      if (stream == null)
-        stream = new FileInputStream(new File(fullPath));
-
-    }
-
-    if (stream != null) {
-      log.info("Found " + fullPath);
-    } else {
-      log.info("Not found.");
-      throw new FileNotFoundException(fullPath);
-    }
-
-    return stream;
-
-  }
-
-  @Override
-  public Properties fetchConfig(String propertiesPath, Optional<RepoDef> repo) {
-
-    String fileName = Config.DEFAULT_PROPERTIES_FILE_NAME;
-
-    if (repo.isPresent()) {
-      assert repo.get() instanceof FileRepoDef : "Repo definitino must be file repo def";
-      FileRepoDef fRepo = (FileRepoDef) repo.get();
-      fileName = fRepo.getConfigFileName();
-    }
+  public Properties fetchConfig(String propertiesPath) {
 
     Properties p = new Properties();
 
-    String fullPath = resolveFullFilePath(propertiesPath, fileName);
+    String fullPath = resolveFullFilePath(propertiesPath, repoConfig.getConfigFileName());
 
-    try (InputStream stream = stream(fullPath, repo)) {
+    try (InputStream stream = stream(fullPath)) {
 
       log.info("Attempting " + fullPath);
 
@@ -119,54 +70,30 @@ public class DefaultFilesystemSource implements ConfigSource, StreamingConfigSou
 
     log.info("Fetching hosts file from path: " + hostsFile);
     String fullPath = resolveFullFilePath(hostsFile, hostsFileName);
-    return fetchConfig(fullPath, Optional.empty());
+    return fetchConfig(fullPath);
   }
 
-  public Properties traverseConfigs(String propertiesPath, Optional<RepoDef> repo) {
-
-    try {
-
-      FileRepoDef fRepo = null;
-
-      if (repo.isPresent()) {
-        assert repo.get() instanceof FileRepoDef : "Repo definitino must be file repo def";
-        fRepo = (FileRepoDef) repo.get();
-      } else {
-        fRepo = new FileRepoDef();
-      }
-
-      if (StringUtils.hasText(propertiesPath)) {
-
-        do {
-
-          fRepo.getStrategy().addConfig(fetchConfig(propertiesPath, repo));
-          propertiesPath = stripDir(propertiesPath);
-
-        } while (new File(propertiesPath).getParent() != null);
-      }
-
-      return fRepo.getStrategy().merge();
-
-    } catch (Exception e) {
-      // should never happen
-    }
-
-    return new Properties();
+  @Override
+  public RepoDef getSourceConfiguration() {
+    return repoConfig;
   }
 
-  protected String stripDir(String path) {
-
-    int i = path.lastIndexOf("/");
-
-    if (i > 0)
-      return path.substring(0, i);
-
-    return "";
-
+  @Override
+  public String getSourceName() {
+    return ConfigSource.FILE_SYSTEM;
   }
 
   protected boolean isClasspath(String path) {
     return path.trim().startsWith("classpath:");
+  }
+
+  @Override
+  public boolean isCompatible(String paths) {
+
+    final String prefix = paths.trim().substring(0, paths.indexOf("/"));
+    return (prefix == "" || prefix.equals(File.separator)
+        || prefix.toLowerCase().startsWith("file:")
+        || prefix.toLowerCase().startsWith("classpath"));
   }
 
   protected boolean isFilePath(String path) {
@@ -180,25 +107,64 @@ public class DefaultFilesystemSource implements ConfigSource, StreamingConfigSou
     return path.trim().startsWith(File.separator);
   }
 
-  protected String resolveFullFilePath(String propertiesPath, String propertiesFileName) {
+  @Override
+  public ConfigSource newInstance(String name, final Map<String, Object> values,
+      final Map<String, Object> defaults) {
+
+    DefaultFilesystemSource s = new DefaultFilesystemSource();
+
+    final Map<String, Object> merged = new HashMap<>(defaults);
+
+    if (!values.isEmpty() && values.containsKey(s.getSourceName()))
+      merged.putAll((Map) values.get(s.getSourceName()));
+
+    FileRepoDef def = new FileRepoDef(name, merged);
+    s.repoConfig = (FileRepoDef) def;
+    return s;
+  }
+
+  protected String resolveFullFilePath(final String propertiesPath, String propertiesFileName) {
+
     String fullPath = "";
+    String path = "";
+    URI uri = URI.create(propertiesPath);
 
-    if (propertiesPath.toLowerCase().contains(propertiesFileName.toLowerCase())) {
+    if (repoConfig != null
+        && (!StringUtils.hasText(uri.getScheme()) || uri.getScheme().startsWith("repo"))) {
 
-      fullPath = propertiesPath;
+      if (StringUtils.hasText(repoConfig.uri)) {
 
-    } else if (propertiesPath.substring(propertiesPath.lastIndexOf(File.separator)).contains(".")) {
+        path = repoConfig.uri;
 
-      fullPath = propertiesPath;
+        if (StringUtils.hasText(repoConfig.root))
+          path = path + repoConfig.root;
+      }
 
-    } else if (!propertiesPath.endsWith(File.separator)
-        && !propertiesFileName.startsWith(File.separator)) {
+      if (StringUtils.hasText(repoConfig.getContext())
+          && propertiesPath.contains(repoConfig.getContext()))
+        path = path + propertiesPath.replaceFirst(repoConfig.getContext(), "");
+      else
+        path = path + propertiesPath;
 
-      fullPath = propertiesPath + "/" + propertiesFileName;
+    } else {
+      path = propertiesPath;
+    }
+
+    if (path.toLowerCase().contains(propertiesFileName.toLowerCase())) {
+
+      fullPath = path;
+
+    } else if (path.substring(path.lastIndexOf(File.separator)).contains(".")) {
+
+      fullPath = path;
+
+    } else if (!path.endsWith(File.separator) && !propertiesFileName.startsWith(File.separator)) {
+
+      fullPath = path + "/" + propertiesFileName;
 
     } else {
 
-      fullPath = propertiesPath + propertiesFileName;
+      fullPath = path + propertiesFileName;
 
     }
 
@@ -206,31 +172,77 @@ public class DefaultFilesystemSource implements ConfigSource, StreamingConfigSou
   }
 
   @Override
-  public String getSourceName() {
-    return ConfigSource.FILE_SYSTEM;
+  public InputStream stream(String fullPath) throws IOException {
+
+    InputStream stream = null;
+
+    if (isFilePath(fullPath)) {
+
+      String trimmed = fullPath.replaceFirst("file:", "");
+      stream = new FileInputStream(new File(trimmed));
+
+    } else if (isClasspath(fullPath)) {
+
+      String trimmed = fullPath.replaceFirst("classpath:", "");
+
+      if (!trimmed.startsWith(File.separator))
+        trimmed = File.separator + trimmed;
+      stream = this.getClass().getResourceAsStream(trimmed);
+
+    } else if (isPath(fullPath)) {
+
+      // could be relative to classpath or filesystem root (i.e. linux)
+
+      stream = this.getClass().getResourceAsStream(fullPath);
+
+      if (stream == null)
+        stream = new FileInputStream(new File(fullPath));
+
+    }
+
+    if (stream != null) {
+      log.info("Found " + fullPath);
+    } else {
+      log.info("Not found.");
+      throw new FileNotFoundException(fullPath);
+    }
+
+    return stream;
+
   }
 
-  @Override
-  public boolean isCompatible(String paths) {
+  protected String stripDir(String path) {
 
-    final String prefix = paths.trim().substring(0, paths.indexOf("/"));
-    return (prefix == "" || prefix.equals(File.separator)
-        || prefix.toLowerCase().startsWith("file:")
-        || prefix.toLowerCase().startsWith("classpath"));
+    int i = path.lastIndexOf("/");
+
+    if (i > 0)
+      return path.substring(0, i);
+
+    return "";
+
   }
 
-  @Override
-  public ConfigSource newInstance(String name, Map<String, Object> values) {
+  public Properties traverseConfigs(String propertiesPath) {
 
-    DefaultFilesystemSource s = new DefaultFilesystemSource();
-    FileRepoDef def = new FileRepoDef(name, values);
-    s.repoConfig = (FileRepoDef) def;
-    return s;
-  }
+    try {
 
-  @Override
-  public RepoDef getSourceConfiguration() {
-    return repoConfig;
+      if (StringUtils.hasText(propertiesPath)) {
+
+        do {
+
+          repoConfig.getStrategy().addConfig(fetchConfig(propertiesPath));
+          propertiesPath = stripDir(propertiesPath);
+
+        } while (new File(propertiesPath).getParent() != null);
+      }
+
+      return repoConfig.getStrategy().merge();
+
+    } catch (Exception e) {
+      // should never happen
+    }
+
+    return new Properties();
   }
 
 }

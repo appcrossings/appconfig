@@ -15,11 +15,15 @@ public class StringUtils {
   /** Default placeholder suffix: {@value} */
   public static final String DEFAULT_PLACEHOLDER_SUFFIX = "}";
 
+  public static boolean hasText(String string) {
+    return (string != null && !string.trim().equals(""));
+  }
+
   private final ConvertUtilsBean bean = new ConvertUtilsBean();
 
-  protected AtomicReference<StrSubstitutor> sub = new AtomicReference<>(new StrSubstitutor());
-
   protected boolean ignoreUnresolvablePlaceholders = false;
+
+  protected AtomicReference<StrSubstitutor> sub = new AtomicReference<>(new StrSubstitutor());
 
   public StringUtils(Properties props) {
     Map<String, String> vals = new HashedMap();
@@ -27,10 +31,6 @@ public class StringUtils {
     sub.set(new StrSubstitutor(vals));
     sub.get().setVariablePrefix(DEFAULT_PLACEHOLDER_PREFIX);
     sub.get().setVariableSuffix(DEFAULT_PLACEHOLDER_SUFFIX);
-  }
-
-  public static boolean hasText(String string) {
-    return (string != null && !string.trim().equals(""));
   }
 
   public <T> T cast(String property, Class<T> clazz) {

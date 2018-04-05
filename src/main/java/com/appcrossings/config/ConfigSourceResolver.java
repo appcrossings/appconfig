@@ -1,5 +1,6 @@
 package com.appcrossings.config;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -17,16 +18,23 @@ import org.yaml.snakeyaml.Yaml;
 import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.source.RepoDef;
 import com.appcrossings.config.source.StreamingConfigSource;
+import com.appcrossings.config.util.StringUtils;
 
 public class ConfigSourceResolver {
 
   private final static Logger logger = LoggerFactory.getLogger(ConfigSourceResolver.class);
 
+  final Map<String, Object> defaults = new HashMap<>();
   final ServiceLoader<ConfigSource> loader;
   final Map<String, ConfigSource> reposByName = new HashMap<>();
   final Map<String, ConfigSource> reposBySource = new HashMap<>();
 
   public ConfigSourceResolver() {
+
+    defaults.put("fileName", Config.DEFAULT_PROPERTIES_FILE_NAME);
+    defaults.put("hostsName", Config.DEFAULT_HOSTS_FILE_NAME);
+    defaults.put("root", "/");
+
     loader = ServiceLoader.load(ConfigSource.class);
 
     for (ConfigSource s : loader) {
@@ -42,11 +50,14 @@ public class ConfigSourceResolver {
 
     if (source instanceof StreamingConfigSource) {
 
-      try (InputStream stream =
-          ((StreamingConfigSource) source).stream(repoDefPath, Optional.empty())) {
+      try (InputStream stream = ((StreamingConfigSource) source).stream(repoDefPath)) {
 
         Yaml yaml = new Yaml();
         LinkedHashMap<String, Object> y = (LinkedHashMap) yaml.load(stream);
+
+        if (y.containsKey("defaults")) {
+          defaults.putAll((Map) y.get("defaults"));
+        }
 
         if (y.containsKey("service")) {
 
@@ -65,7 +76,7 @@ public class ConfigSourceResolver {
 
                 if (cs.isPresent()) {
 
-                  buildConfigSource(cs.get(), (Map) entry.getValue(), repoName);
+                  buildConfigSource(cs.get(), (Map) entry.getValue(), repoName, defaults);
 
                 } else {
                   continue;
@@ -88,12 +99,12 @@ public class ConfigSourceResolver {
   }
 
   protected ConfigSource buildConfigSource(ConfigSource template, Map<String, Object> values,
-      final String name) {
+      final String name, Map<String, Object> defaults) {
 
     try {
 
       if (!reposByName.containsKey(name.toLowerCase())) {
-        ConfigSource s = template.newInstance(name.toLowerCase(), values);
+        ConfigSource s = template.newInstance(name.toLowerCase(), values, new HashMap<>(defaults));
         reposByName.put(name.toLowerCase(), s);
       }
 
@@ -105,45 +116,68 @@ public class ConfigSourceResolver {
     return reposByName.get(name.toLowerCase());
   }
 
+  public Optional<ConfigSource> resolveByRepoName(String repoName) {
+    return Optional.ofNullable(reposByName.get(repoName.toLowerCase()));
+  }
+
   public Optional<ConfigSource> resolveBySourceName(final Set<String> sourceNames) {
 
-    Optional<ConfigSource> cs = StreamSupport.stream(loader.spliterator(), false).filter(s -> {
+    ConfigSource cs = null;
+
+    Optional<ConfigSource> ocs = StreamSupport.stream(loader.spliterator(), false).filter(s -> {
       return sourceNames.contains(s.getSourceName());
     }).findFirst();
 
-    if (!cs.isPresent())
+    if (ocs.isPresent()) {
+      cs = buildConfigSource(ocs.get(), new HashMap<>(), ocs.get().getSourceName(), defaults);
+    } else {
       logger.warn("No config source found for " + sourceNames + ". Ignoring configuration.");
+    }
 
-    return cs;
+    return Optional.ofNullable(cs);
 
   }
 
   public ConfigSource resolveByUri(final String uri) {
 
     ConfigSource cs = null;
-
-    Optional<ConfigSource> ocs = StreamSupport.stream(loader.spliterator(), false).filter(s -> {
-      return s.isCompatible(uri);
-    }).findFirst();
-
     URI i = URI.create(uri);
-
+    String[] paths = i.getSchemeSpecificPart().split(File.separator);
+    String firstPath = i.getPath();
     String repoName = i.getScheme();
 
-    if (ocs.isPresent()) {
+    if (paths.length > 0) {
+      for (String p : paths) {
+        if (StringUtils.hasText(p)) {
+          firstPath = p;
+          break;
+        }
+      }
+    }
 
-      cs = buildConfigSource(ocs.get(), new HashMap<>(), repoName);
+    if (reposByName.containsKey(firstPath.toLowerCase())) {
+
+      cs = reposByName.get(firstPath.toLowerCase());
+      repoName = firstPath;
+      logger.info("Resolving " + uri + " to repo definition " + repoName);
 
     } else {
+
+      Optional<ConfigSource> ocs = StreamSupport.stream(loader.spliterator(), false).filter(s -> {
+        return s.isCompatible(uri);
+      }).findFirst();
+
+      if (ocs.isPresent()) {
+        cs = buildConfigSource(ocs.get(), new HashMap<>(), repoName, defaults);
+      }
+    }
+
+    if (cs == null) {
       throw new RuntimeException("No config source compatible with uri " + uri);
     }
 
     return cs;
 
-  }
-
-  public Optional<ConfigSource> resolveByRepoName(String repoName) {
-    return Optional.ofNullable(reposByName.get(repoName.toLowerCase()));
   }
 
 }

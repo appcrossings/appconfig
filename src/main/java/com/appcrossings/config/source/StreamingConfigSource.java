@@ -5,7 +5,7 @@ import java.io.InputStream;
 import java.util.Optional;
 
 public interface StreamingConfigSource {
-  
-  public InputStream stream(String propertiesPath, Optional<RepoDef> repo)  throws IOException;
+
+  public InputStream stream(String propertiesPath) throws IOException;
 
 }

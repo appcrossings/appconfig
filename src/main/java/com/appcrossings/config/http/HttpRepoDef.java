@@ -1,44 +1,65 @@
 package com.appcrossings.config.http;
 
 import java.util.Map;
-import com.appcrossings.config.Config;
-import com.appcrossings.config.source.BaseRepoDef;
+import org.apache.commons.beanutils.BeanUtils;
+import com.appcrossings.config.source.DefaultRepoDef;
 import com.appcrossings.config.source.FileBasedRepo;
 import com.appcrossings.config.source.SecuredRepo;
 
 @SuppressWarnings("serial")
-public class HttpRepoDef extends BaseRepoDef implements FileBasedRepo, SecuredRepo {
+public class HttpRepoDef extends DefaultRepoDef implements FileBasedRepo, SecuredRepo {
 
-  String uri;
-  String root = "/";
-  String fileName = Config.DEFAULT_PROPERTIES_FILE_NAME;
-  String hostsName = Config.DEFAULT_HOSTS_FILE_NAME;
-  String userName;
+  public String getFileName() {
+    return fileName;
+  }
+
+  public void setFileName(String fileName) {
+    this.fileName = fileName;
+  }
+
+  public String getHostsName() {
+    return hostsName;
+  }
+
+  public void setHostsName(String hostsName) {
+    this.hostsName = hostsName;
+  }
+
+  public String getPassWord() {
+    return passWord;
+  }
+
+  public void setPassWord(String passWord) {
+    this.passWord = passWord;
+  }
+
+  public void setUserName(String userName) {
+    this.userName = userName;
+  }
+
+  String fileName;
+  String hostsName;
   String passWord;
+  String root;
+  String uri;
+  String userName;
 
+  /**
+   * For testing convenience
+   */
   protected HttpRepoDef() {
     super();
   }
 
   public HttpRepoDef(String name, Map<String, Object> values) {
-    super(name, (Map) values.get("http"));
-  }
+    super(name);
 
-  public String getUri() {
-    return uri;
-  }
-
-  public void setUri(String uri) {
-    this.uri = uri;
-  }
-
-  @Override
-  public String getRoot() {
-    return root;
-  }
-
-  public void setRoot(String root) {
-    this.root = root;
+    try {
+      if (values != null && !values.isEmpty())
+        BeanUtils.populate(this, values);
+    } catch (Exception e) {
+      throw new IllegalArgumentException(e);
+    }
   }
 
   @Override
@@ -52,15 +73,32 @@ public class HttpRepoDef extends BaseRepoDef implements FileBasedRepo, SecuredRe
   }
 
   @Override
+  public String getPassword() {
+    // TODO Auto-generated method stub
+    return passWord;
+  }
+
+  @Override
+  public String getRoot() {
+    return root;
+  }
+
+  public String getUri() {
+    return uri;
+  }
+
+  @Override
   public String getUserName() {
     // TODO Auto-generated method stub
     return userName;
   }
 
-  @Override
-  public String getPassword() {
-    // TODO Auto-generated method stub
-    return passWord;
+  public void setRoot(String root) {
+    this.root = root;
+  }
+
+  public void setUri(String uri) {
+    this.uri = uri;
   }
 
 

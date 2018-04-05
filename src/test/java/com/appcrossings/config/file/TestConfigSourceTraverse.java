@@ -14,7 +14,7 @@ import com.appcrossings.config.Config;
 import com.appcrossings.config.ConfigSourceResolver;
 import com.appcrossings.config.source.ConfigSource;
 
-public class TestLoadProperties {
+public class TestConfigSourceTraverse {
 
   private Optional<ConfigSource> source;
   private ConfigSourceResolver factory = new ConfigSourceResolver();
@@ -39,7 +39,7 @@ public class TestLoadProperties {
   @Test
   public void loadClasspathProperties() throws Exception {
 
-    Properties p = source.get().traverseConfigs("classpath:/env/dev", Optional.of(new FileRepoDef()));
+    Properties p = source.get().traverseConfigs("classpath:/env/dev");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.getProperty("property.1.name"), "value1");
@@ -49,8 +49,7 @@ public class TestLoadProperties {
   @Test
   public void loadFileProperties() throws Exception {
 
-    Properties p = source.get().traverseConfigs("file:/" + folder.getRoot() + "/env/dev/",
-        Optional.of(new FileRepoDef()));
+    Properties p = source.get().traverseConfigs("file:/" + folder.getRoot() + "/env/dev/");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.getProperty("property.1.name"), "value1");
@@ -60,7 +59,7 @@ public class TestLoadProperties {
   @Test
   public void loadClasspathRelativePath() throws Exception {
 
-    Properties p = source.get().traverseConfigs("/env/dev/", Optional.of(new FileRepoDef()));
+    Properties p = source.get().traverseConfigs("/env/dev/");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.getProperty("property.1.name"), "value1");
@@ -71,7 +70,7 @@ public class TestLoadProperties {
   public void loadAbsoluteFile() throws Exception {
 
     Properties p =
-        source.get().traverseConfigs(folder.getRoot() + "/env/dev/", Optional.of(new FileRepoDef()));
+        source.get().traverseConfigs(folder.getRoot() + "/env/dev/");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.getProperty("property.1.name"), "value1");
@@ -83,8 +82,8 @@ public class TestLoadProperties {
   @Test
   public void testLoadHosts() throws Exception {
 
-    Properties p =
-        source.get().fetchHostEntries("classpath:/env/hosts.properties", Config.DEFAULT_HOSTS_FILE_NAME);
+    Properties p = source.get().fetchHostEntries("classpath:/env/hosts.properties",
+        Config.DEFAULT_HOSTS_FILE_NAME);
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("michelangello"));
     Assert.assertEquals(p.getProperty("michelangello"), "classpath:/env/dev/");

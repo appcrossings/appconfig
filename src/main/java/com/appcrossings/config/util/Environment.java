@@ -12,18 +12,18 @@ import org.slf4j.LoggerFactory;
 
 public class Environment {
 
-  public final static String IP_ADDRESS = "ip";
-  public final static String ENV_NAME = "app.env";
-  public final static String HOST_NAME = "hostname";
-  public final static String OS_NAME = "os.name";
-  public final static String OS_VERSION = "os.version";
-  public final static String SUBNET_ADDRESS = "subnet";
   public final static String APP_NAME = "app.name";
   public final static String APP_VERSION = "app.version";
+  public final static String ENV_NAME = "app.env";
+  public final static String HOST_NAME = "hostname";
+  public final static String IP_ADDRESS = "ip";
+  private final static Logger log = LoggerFactory.getLogger(Environment.class);
+  public final static String OS_NAME = "os.name";
+  public final static String OS_VERSION = "os.version";
 
   public final static String PREFIX = "appconfig.";
 
-  private final static Logger log = LoggerFactory.getLogger(Environment.class);
+  public final static String SUBNET_ADDRESS = "subnet";
   protected final Map<String, String> envProps = new HashMap<>();
 
   public Environment() {}
@@ -77,7 +77,7 @@ public class Environment {
                 : InetAddress.getLocalHost().getHostName();
 
       } catch (UnknownHostException ex) {
-        //Nothing
+        // Nothing
       }
 
       hostName = StringUtils.hasText(hostName) ? hostName : System.getProperty("HOSTNAME");
@@ -138,18 +138,6 @@ public class Environment {
     return this.envProps.get(IP_ADDRESS);
   }
 
-  public void setHostName(String hostName) {
-    this.envProps.put(HOST_NAME, hostName);
-  }
-
-  public void setEnvironmentName(String environmentName) {
-    this.envProps.put(ENV_NAME, environmentName);
-  }
-
-  public void setApplicationName(String appName) {
-    this.envProps.put(APP_NAME, appName);
-  }
-
   public Map<String, String> getEnvironment() {
     return Collections.unmodifiableMap(this.envProps);
   }
@@ -166,6 +154,18 @@ public class Environment {
     }
     return props;
 
+  }
+
+  public void setApplicationName(String appName) {
+    this.envProps.put(APP_NAME, appName);
+  }
+
+  public void setEnvironmentName(String environmentName) {
+    this.envProps.put(ENV_NAME, environmentName);
+  }
+
+  public void setHostName(String hostName) {
+    this.envProps.put(HOST_NAME, hostName);
   }
 
   public void setProperty(String key, String value) {

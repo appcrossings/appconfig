@@ -10,12 +10,6 @@ import org.yaml.snakeyaml.Yaml;
 
 public class YamlProcessor {
 
-  public static boolean isYamlFile(String path) {
-
-    assert StringUtils.hasText(path) : "Path was null or empty";
-    return (path.toLowerCase().endsWith(".yaml") || path.toLowerCase().endsWith(".yml"));
-  }
-
   public static Properties asProperties(InputStream stream) {
 
     Yaml yaml = new Yaml();
@@ -26,6 +20,12 @@ public class YamlProcessor {
     recurse(map, builder, properties);
 
     return properties;
+  }
+
+  public static boolean isYamlFile(String path) {
+
+    assert StringUtils.hasText(path) : "Path was null or empty";
+    return (path.toLowerCase().endsWith(".yaml") || path.toLowerCase().endsWith(".yml"));
   }
 
   private static void recurse(List<Object> list, StringBuilder builder, Properties props) {
