@@ -17,15 +17,6 @@ public interface ConfigSource {
    */
   public Properties fetchConfig(String propertiesPath);
 
-  /**
-   * Resolves the config node to start traversal at via hosts entry.
-   * 
-   * @param hostsFile
-   * @param hostsFileName
-   * @return
-   */
-  public Properties fetchHostEntries(String hostsFile, String hostsFileName);
-
   public RepoDef getSourceConfiguration();
 
   /**

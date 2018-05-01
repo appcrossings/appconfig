@@ -9,6 +9,7 @@ import com.appcrossings.config.ConfigClient;
 import com.appcrossings.config.ConfigClient.Method;
 import com.appcrossings.config.ConfigSourceResolver;
 import com.appcrossings.config.source.ConfigSource;
+import com.appcrossings.config.util.Environment;
 
 public class TestRepoDefinitionFetch {
 
@@ -38,7 +39,7 @@ public class TestRepoDefinitionFetch {
 
   @Test
   public void testParseFileRepoDef() throws Exception {
-    resolver = new ConfigSourceResolver(yamlFile);
+    resolver = new ConfigSourceResolver(yamlFile, new Environment());
 
     Optional<ConfigSource> def = resolver.resolveByRepoName("tmp-configs");
     Assert.assertTrue(def.isPresent());

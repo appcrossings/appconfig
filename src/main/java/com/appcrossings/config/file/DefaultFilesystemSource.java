@@ -67,13 +67,6 @@ public class DefaultFilesystemSource implements ConfigSource, StreamingConfigSou
     return p;
   }
 
-  public Properties fetchHostEntries(String hostsFile, String hostsFileName) {
-
-    log.info("Fetching hosts file from path: " + hostsFile);
-    String fullPath = resolveFullFilePath(hostsFile, hostsFileName);
-    return fetchConfig(fullPath);
-  }
-
   @Override
   public RepoDef getSourceConfiguration() {
     return repoConfig;
@@ -126,7 +119,6 @@ public class DefaultFilesystemSource implements ConfigSource, StreamingConfigSou
 
   protected String resolveFullFilePath(final String propertiesPath, String propertiesFileName) {
 
-    String fullPath = "";
     String path = "";
     URI uri = URI.create(propertiesPath);
 
@@ -151,25 +143,10 @@ public class DefaultFilesystemSource implements ConfigSource, StreamingConfigSou
       path = propertiesPath;
     }
 
-    if (path.toLowerCase().contains(propertiesFileName.toLowerCase())) {
+    UriUtil pathUtil = new UriUtil(path);
+    pathUtil.appendFileName(propertiesFileName);
 
-      fullPath = path;
-
-    } else if (path.substring(path.lastIndexOf(File.separator)).contains(".")) {
-
-      fullPath = path;
-
-    } else if (!path.endsWith(File.separator) && !propertiesFileName.startsWith(File.separator)) {
-
-      fullPath = path + "/" + propertiesFileName;
-
-    } else {
-
-      fullPath = path + propertiesFileName;
-
-    }
-
-    return fullPath;
+    return pathUtil.toString();
   }
 
   @Override

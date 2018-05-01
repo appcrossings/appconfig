@@ -1,5 +1,6 @@
 package com.appcrossings.config.util;
 
+import java.io.File;
 import java.net.URI;
 import java.net.URL;
 
@@ -56,7 +57,7 @@ public class UriUtil {
   }
 
   public boolean hasFile() {
-    return this.manipulated.substring(this.manipulated.lastIndexOf("/")).contains(".");
+    return this.uri.toString().substring(this.uri.toString().lastIndexOf("/")).contains(".");
   }
 
   public boolean isURL() {
@@ -83,16 +84,69 @@ public class UriUtil {
 
   }
 
+  public boolean isConfigrdServer() {
+
+    String basePath;
+    if (StringUtils.hasText(this.uri.getPath()))
+      basePath = this.uri.getPath();
+    else
+      basePath = this.uri.getSchemeSpecificPart();
+
+    return basePath.toLowerCase().contains("configrd/v1");
+  }
+
+  public String getScheme() {
+    return uri.getScheme();
+  }
+
+  public String getSchemeSpecificPart() {
+    return uri.getSchemeSpecificPart();
+  }
+
+  public String firstPathSegment() {
+
+    String[] paths = uri.getSchemeSpecificPart().split(File.separator);
+    String firstPath = uri.getPath();
+    String repoName = uri.getScheme();
+
+    if (paths.length > 0) {
+      for (String p : paths) {
+        if (StringUtils.hasText(p)) {
+          firstPath = p;
+          break;
+        }
+      }
+    }
+
+    return firstPath;
+  }
+
+  public void appendFileName(String fileName) {
+
+    if (StringUtils.hasText(fileName) && !hasFile())
+      this.fileName = File.separator + fileName.trim();
+
+  }
+
+  public void replaceFileName(String fileName) {
+    if (StringUtils.hasText(fileName))
+      this.fileName = File.separator + fileName.trim();
+  }
+
   @Override
   public String toString() {
 
     StringBuilder s = new StringBuilder();
 
     if (isURL) {
-      s.append(this.uri.getScheme() + "://" + this.uri.getAuthority());
+      s.append(this.uri.getScheme() + ":");
 
-      if (this.uri.getPort() > 0)
-        s.append(":" + this.uri.getPort());
+      if (StringUtils.hasText(this.uri.getAuthority())) {
+        s.append("//" + this.uri.getAuthority());
+
+        if (this.uri.getPort() > 0)
+          s.append(":" + this.uri.getPort());
+      }
 
     } else if (isClasspath) {
       s.append(this.uri.toString().substring(0, this.uri.toString().indexOf(":")) + ":");
@@ -100,8 +154,13 @@ public class UriUtil {
 
     s.append(this.manipulated);
 
-    if (StringUtils.hasText(this.fileName))
-      s.append(fileName);
+    if (StringUtils.hasText(this.fileName)) {
+      if (this.fileName.startsWith(File.separator) && this.manipulated.endsWith(File.separator)) {
+        s.append(this.fileName.replaceAll(File.separator, ""));
+      } else {
+        s.append(this.fileName);
+      }
+    }
 
     return s.toString();
   }

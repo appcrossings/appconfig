@@ -1,9 +1,10 @@
 package com.appcrossings.config;
 
+import java.util.Optional;
 import java.util.Properties;
 
 public interface ConfigLookupStrategy {
 
-  public String lookupConfigPath(Properties hosts, Properties envProps);
+  public Optional<String> lookupConfigPath(Properties hosts, Properties envProps);
 
 }

@@ -10,14 +10,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.internal.util.collections.Sets;
-import com.appcrossings.config.Config;
 import com.appcrossings.config.ConfigSourceResolver;
 import com.appcrossings.config.source.ConfigSource;
+import com.appcrossings.config.util.Environment;
 
 public class TestConfigSourceTraverse {
 
   private Optional<ConfigSource> source;
-  private ConfigSourceResolver factory = new ConfigSourceResolver();
+  private ConfigSourceResolver factory = new ConfigSourceResolver(new Environment());
 
   @Rule
   public TemporaryFolder folder = new TemporaryFolder();
@@ -69,8 +69,7 @@ public class TestConfigSourceTraverse {
   @Test
   public void loadAbsoluteFile() throws Exception {
 
-    Properties p =
-        source.get().traverseConfigs(folder.getRoot() + "/env/dev/");
+    Properties p = source.get().traverseConfigs(folder.getRoot() + "/env/dev/");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.getProperty("property.1.name"), "value1");
@@ -82,8 +81,7 @@ public class TestConfigSourceTraverse {
   @Test
   public void testLoadHosts() throws Exception {
 
-    Properties p = source.get().fetchHostEntries("classpath:/env/hosts.properties",
-        Config.DEFAULT_HOSTS_FILE_NAME);
+    Properties p = source.get().fetchConfig("classpath:/env/hosts.properties");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("michelangello"));
     Assert.assertEquals(p.getProperty("michelangello"), "classpath:/env/dev/");

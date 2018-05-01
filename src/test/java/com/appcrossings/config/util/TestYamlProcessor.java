@@ -12,15 +12,14 @@ import com.appcrossings.config.source.ConfigSource;
 public class TestYamlProcessor {
 
   YamlProcessor proc = new YamlProcessor();
-  private ConfigSourceResolver factory = new ConfigSourceResolver();
+  private ConfigSourceResolver factory = new ConfigSourceResolver(new Environment());
   private final String yamlFile = "classpath:/env/dev/yaml/default.yaml";
 
   @Test
   public void testFlattenYamlToProperties() throws Exception {
 
-    ConfigSource source = factory.resolveByUri(yamlFile);
-    InputStream stream =
-        ((DefaultFilesystemSource) source).stream(yamlFile);
+    Optional<ConfigSource> source = factory.resolveByUri(yamlFile);
+    InputStream stream = ((DefaultFilesystemSource) source.get()).stream(yamlFile);
     Properties props = proc.asProperties(stream);
 
     Assert.assertTrue(props.containsKey("property.1.name"));
@@ -38,9 +37,8 @@ public class TestYamlProcessor {
   @Test
   public void testFlattenYamlArrayToProperties() throws Exception {
 
-    ConfigSource source = factory.resolveByUri(yamlFile);
-    InputStream stream =
-        ((DefaultFilesystemSource) source).stream(yamlFile);
+    Optional<ConfigSource> source = factory.resolveByUri(yamlFile);
+    InputStream stream = ((DefaultFilesystemSource) source.get()).stream(yamlFile);
     Properties props = proc.asProperties(stream);
 
     Assert.assertTrue(props.containsKey("array.named[0]"));

@@ -1,5 +1,6 @@
 package com.appcrossings.config;
 
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -14,6 +15,7 @@ import com.appcrossings.config.strategy.DefaultConfigLookupStrategy;
 import com.appcrossings.config.strategy.DefaultMergeStrategy;
 import com.appcrossings.config.util.Environment;
 import com.appcrossings.config.util.StringUtils;
+import com.appcrossings.config.util.UriUtil;
 
 /**
  * 
@@ -45,7 +47,7 @@ public class ConfigClient implements Config {
 
   private StandardPBEStringEncryptor encryptor = null;
 
-  protected final Environment envUtil = new Environment();
+  public final Environment environment = new Environment();
 
   protected String fileNamePattern = DEFAULT_PROPERTIES_FILE_NAME;
 
@@ -111,7 +113,7 @@ public class ConfigClient implements Config {
     if (props.containsKey(Config.CONFIG_LOOKUP_STRATEGY))
       this.lookupStrategy = (ConfigLookupStrategy) props.get(Config.CONFIG_LOOKUP_STRATEGY);
 
-    this.strings = new StringUtils(envUtil.getProperties());
+    this.strings = new StringUtils(environment.getProperties());
 
   }
 
@@ -123,7 +125,7 @@ public class ConfigClient implements Config {
    *        indicates no automated timer
    * @throws Exception
    */
-  public ConfigClient(String path, int refresh, Method method) throws Exception {
+  public ConfigClient(String path, int refresh, Method method) {
     this(path, method);
     this.timerTTL = refresh;
   }
@@ -134,7 +136,7 @@ public class ConfigClient implements Config {
    *        or hosts.properties path
    * @throws Exception
    */
-  public ConfigClient(String path, Method method) throws Exception {
+  public ConfigClient(String path, Method method) {
     this.startLocation = path;
     this.method = method;
     this.repoDefLocation = null;
@@ -146,14 +148,14 @@ public class ConfigClient implements Config {
    *        or hosts.properties path
    * @throws Exception
    */
-  public ConfigClient(String repoDefPath, String path, Method method) throws Exception {
+  public ConfigClient(String repoDefPath, String path, Method method) {
     this.startLocation = path;
     this.method = method;
     this.repoDefLocation = repoDefPath;
   }
 
   public Environment getEnvironment() {
-    return envUtil;
+    return environment;
   }
 
   public String getFileNamePattern() {
@@ -203,62 +205,73 @@ public class ConfigClient implements Config {
 
   public void init() {
 
-    String environmentName = envUtil.detectEnvironment();
-    String hostName = envUtil.detectHostName();
-    String startPath = null;
+    String environmentName = environment.detectEnvironment();
+    String hostName = environment.detectHostName();
+    Optional<String> startPath = Optional.empty();
 
     if (StringUtils.hasText(this.repoDefLocation)) {
-      this.sourceResolver = new ConfigSourceResolver(this.repoDefLocation);
+      this.sourceResolver = new ConfigSourceResolver(this.repoDefLocation, environment);
     } else {
-      this.sourceResolver = new ConfigSourceResolver();
+      this.sourceResolver = new ConfigSourceResolver(environment);
     }
 
     if (this.method.equals(Method.HOST_FILE)) {
 
       logger.info("Loading hosts file at " + startLocation);
 
-      ConfigSource configSource = this.sourceResolver.resolveByUri(startLocation);
+      UriUtil uri = new UriUtil(startLocation);
+      
+      Optional<ConfigSource> configSource = this.sourceResolver.resolveByUri(startLocation);
 
-      Properties hosts = configSource.fetchHostEntries(startLocation, hostsNamePattern);
+      if (configSource.isPresent()) {
+        Properties hosts = configSource.get().fetchConfig(startLocation);
 
-      if (encryptor != null)
-        hosts = new EncryptableProperties(hosts, encryptor);
+        if (encryptor != null)
+          hosts = new EncryptableProperties(hosts, encryptor);
 
-      startPath = lookupStrategy.lookupConfigPath(hosts, envUtil.getProperties());
+        if (hosts.isEmpty()) {
+          throw new IllegalArgumentException(
+              "Hosts file empty or wrong hosts file path provided: " + startLocation);
+        }
+
+        startPath = lookupStrategy.lookupConfigPath(hosts, environment.getProperties());
+      }
 
     } else if (this.method.equals(Method.DIRECT_PATH)) {
 
-      startPath = this.startLocation;
+      startPath = Optional.of(this.startLocation);
 
     }
 
-    if (StringUtils.hasText(startPath)) {
+    if (startPath.isPresent()) {
 
       mergeStrategy.clear();
 
-      ConfigSource configSource = this.sourceResolver.resolveByUri(startPath);
+      Optional<ConfigSource> configSource = this.sourceResolver.resolveByUri(startPath.get());
 
       logger.debug("Searching for properties beginning at: " + startPath);
 
-      Properties ps = configSource.traverseConfigs(startPath);
-      mergeStrategy.addConfig(ps);
+      if (configSource.isPresent()) {
+        Properties ps = configSource.get().traverseConfigs(startPath.get());
+        mergeStrategy.addConfig(ps);
 
-      if (encryptor != null)
-        ps = new EncryptableProperties(ps, encryptor);
+        if (encryptor != null)
+          ps = new EncryptableProperties(ps, encryptor);
 
-      if (ps.isEmpty()) {
-        logger.warn("Counldn't find any properties for host " + hostName + " or environment "
-            + environmentName);
+        if (ps.isEmpty()) {
+          logger.warn("Counldn't find any properties for host " + hostName + " or environment "
+              + environmentName);
+        }
+
+        loadedProperties.set(ps);
       }
-
-      loadedProperties.set(ps);
 
     } else {
       logger.warn("Counldn't find any properties for host " + hostName + " or environment "
           + environmentName);
     }
 
-    mergeStrategy.addConfig(envUtil.getProperties());
+    mergeStrategy.addConfig(environment.getProperties());
     strings = new StringUtils(mergeStrategy.merge());
     setRefreshRate(timerTTL);
 

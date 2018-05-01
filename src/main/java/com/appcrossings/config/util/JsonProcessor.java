@@ -1,11 +1,11 @@
 package com.appcrossings.config.util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import org.apache.commons.io.IOUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
 import com.jsoniter.any.Any;
@@ -18,7 +18,18 @@ public class JsonProcessor {
 
     try {
 
-      Any body = JsonIterator.deserialize(IOUtils.toByteArray(stream));
+      ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+
+      int nRead;
+      byte[] data = new byte[16384];
+
+      while ((nRead = stream.read(data, 0, data.length)) != -1) {
+        buffer.write(data, 0, nRead);
+      }
+
+      buffer.flush();
+
+      Any body = JsonIterator.deserialize(buffer.toByteArray());
       StringBuilder builder = new StringBuilder();
 
       if (body.valueType().equals(ValueType.OBJECT)) {

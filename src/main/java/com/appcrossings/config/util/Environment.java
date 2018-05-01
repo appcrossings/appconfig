@@ -20,9 +20,6 @@ public class Environment {
   private final static Logger log = LoggerFactory.getLogger(Environment.class);
   public final static String OS_NAME = "os.name";
   public final static String OS_VERSION = "os.version";
-
-  public final static String PREFIX = "appconfig.";
-
   public final static String SUBNET_ADDRESS = "subnet";
   protected final Map<String, String> envProps = new HashMap<>();
 
@@ -144,15 +141,7 @@ public class Environment {
 
   public Properties getProperties() {
 
-    final Properties props = new Properties();
-
-    if (!this.envProps.isEmpty()) {
-      this.envProps.forEach((k, v) -> {
-        if (v != null && k != null && k != "")
-          props.put(PREFIX + k, v);
-      });
-    }
-    return props;
+    return PropertiesProcessor.asProperties((Map) this.envProps);
 
   }
 

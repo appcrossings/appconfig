@@ -6,6 +6,7 @@ import org.junit.Test;
 import com.appcrossings.config.Config;
 import com.appcrossings.config.ConfigSourceResolver;
 import com.appcrossings.config.source.ConfigSource;
+import com.appcrossings.config.util.Environment;
 
 public class TestRepoDefinition {
 
@@ -14,7 +15,7 @@ public class TestRepoDefinition {
 
   @Test
   public void testParseHttpRepoDef() throws Exception {
-    resolver = new ConfigSourceResolver(yamlFile);
+    resolver = new ConfigSourceResolver(yamlFile, new Environment());
 
     Optional<ConfigSource> def = resolver.resolveByRepoName("git-master");
     Assert.assertFalse(def.isPresent());

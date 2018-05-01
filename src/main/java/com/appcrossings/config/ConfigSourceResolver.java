@@ -1,9 +1,7 @@
 package com.appcrossings.config;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -16,9 +14,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import com.appcrossings.config.source.ConfigSource;
+import com.appcrossings.config.source.EnvironmentAware;
 import com.appcrossings.config.source.RepoDef;
 import com.appcrossings.config.source.StreamingConfigSource;
+import com.appcrossings.config.util.Environment;
 import com.appcrossings.config.util.StringUtils;
+import com.appcrossings.config.util.UriUtil;
 
 public class ConfigSourceResolver {
 
@@ -28,12 +29,15 @@ public class ConfigSourceResolver {
   final ServiceLoader<ConfigSource> loader;
   final Map<String, ConfigSource> reposByName = new HashMap<>();
   final Map<String, ConfigSource> reposBySource = new HashMap<>();
+  final Environment environment;
 
-  public ConfigSourceResolver() {
+  public ConfigSourceResolver(Environment environment) {
 
     defaults.put("fileName", Config.DEFAULT_PROPERTIES_FILE_NAME);
     defaults.put("hostsName", Config.DEFAULT_HOSTS_FILE_NAME);
     defaults.put("root", "/");
+
+    this.environment = environment;
 
     loader = ServiceLoader.load(ConfigSource.class);
 
@@ -42,15 +46,17 @@ public class ConfigSourceResolver {
     }
   }
 
-  public ConfigSourceResolver(String repoDefPath) {
-    this();
+  public ConfigSourceResolver(String repoDefPath, Environment environment) {
+    this(environment);
 
-    ConfigSource source = resolveByUri(repoDefPath);
+    assert StringUtils.hasText(repoDefPath) : "no repo configuration file provided.";
+
+    Optional<ConfigSource> source = resolveByUri(repoDefPath);
     RepoDef def;
 
-    if (source instanceof StreamingConfigSource) {
+    if (source.isPresent() && source.get() instanceof StreamingConfigSource) {
 
-      try (InputStream stream = ((StreamingConfigSource) source).stream(repoDefPath)) {
+      try (InputStream stream = ((StreamingConfigSource) source.get()).stream(repoDefPath)) {
 
         Yaml yaml = new Yaml();
         LinkedHashMap<String, Object> y = (LinkedHashMap) yaml.load(stream);
@@ -105,6 +111,11 @@ public class ConfigSourceResolver {
 
       if (!reposByName.containsKey(name.toLowerCase())) {
         ConfigSource s = template.newInstance(name.toLowerCase(), values, new HashMap<>(defaults));
+
+        if (s != null && EnvironmentAware.class.isAssignableFrom(s.getClass())) {
+          ((EnvironmentAware) s).setEnvironment(environment);
+        }
+
         reposByName.put(name.toLowerCase(), s);
       }
 
@@ -138,22 +149,12 @@ public class ConfigSourceResolver {
 
   }
 
-  public ConfigSource resolveByUri(final String uri) {
+  public Optional<ConfigSource> resolveByUri(final String uri) {
 
     ConfigSource cs = null;
-    URI i = URI.create(uri);
-    String[] paths = i.getSchemeSpecificPart().split(File.separator);
-    String firstPath = i.getPath();
+    UriUtil i = new UriUtil(uri);
     String repoName = i.getScheme();
-
-    if (paths.length > 0) {
-      for (String p : paths) {
-        if (StringUtils.hasText(p)) {
-          firstPath = p;
-          break;
-        }
-      }
-    }
+    String firstPath = i.firstPathSegment();
 
     if (reposByName.containsKey(firstPath.toLowerCase())) {
 
@@ -172,11 +173,7 @@ public class ConfigSourceResolver {
       }
     }
 
-    if (cs == null) {
-      throw new RuntimeException("No config source compatible with uri " + uri);
-    }
-
-    return cs;
+    return Optional.ofNullable(cs);
 
   }
 

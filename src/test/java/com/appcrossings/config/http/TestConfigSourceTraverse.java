@@ -6,15 +6,15 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.internal.util.collections.Sets;
-import com.appcrossings.config.Config;
 import com.appcrossings.config.ConfigSourceResolver;
 import com.appcrossings.config.source.ConfigSource;
+import com.appcrossings.config.util.Environment;
 
 public class TestConfigSourceTraverse {
 
   private String host = "http://config.appcrossings.net";
   private Optional<ConfigSource> source;
-  private ConfigSourceResolver factory = new ConfigSourceResolver();
+  private ConfigSourceResolver factory = new ConfigSourceResolver(new Environment());
 
   @Before
   public void before() throws Exception {
@@ -24,8 +24,7 @@ public class TestConfigSourceTraverse {
 
   public void testPullHostFileFromAmazon() throws Exception {
 
-    Properties p = source.get().fetchHostEntries(host + "/env/hosts.properties",
-        Config.DEFAULT_HOSTS_FILE_NAME);
+    Properties p = source.get().fetchConfig(host + "/env/hosts.properties");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("kkarski-ibm"));
 

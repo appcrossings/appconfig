@@ -2,6 +2,7 @@ package com.appcrossings.config;
 
 import java.util.Properties;
 import com.appcrossings.config.strategy.DefaultMergeStrategy;
+import com.appcrossings.config.util.Environment;
 
 /**
  * Interface for configuration implementations.
@@ -27,6 +28,7 @@ public interface Config {
   public final static boolean SEARCH_CLASSPATH = true;
 
   public final static String TRAVERSE_CLASSPATH = "traverse.classpath";
+
 
   /**
    * 
