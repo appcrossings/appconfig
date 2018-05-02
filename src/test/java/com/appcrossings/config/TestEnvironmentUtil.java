@@ -2,7 +2,6 @@ package com.appcrossings.config;
 
 import org.junit.Assert;
 import org.junit.Test;
-import com.appcrossings.config.util.Environment;
 
 public class TestEnvironmentUtil {
 

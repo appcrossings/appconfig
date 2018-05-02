@@ -2,6 +2,7 @@ package com.appcrossings.config;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -9,15 +10,16 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import com.appcrossings.config.source.ConfigSource;
-import com.appcrossings.config.source.EnvironmentAware;
+import com.appcrossings.config.source.ConfigSourceFactory;
 import com.appcrossings.config.source.RepoDef;
-import com.appcrossings.config.source.StreamingConfigSource;
-import com.appcrossings.config.util.Environment;
+import com.appcrossings.config.source.StreamPacket;
+import com.appcrossings.config.source.StreamSource;
 import com.appcrossings.config.util.StringUtils;
 import com.appcrossings.config.util.UriUtil;
 
@@ -26,154 +28,175 @@ public class ConfigSourceResolver {
   private final static Logger logger = LoggerFactory.getLogger(ConfigSourceResolver.class);
 
   final Map<String, Object> defaults = new HashMap<>();
-  final ServiceLoader<ConfigSource> loader;
+  final ServiceLoader<ConfigSourceFactory> streamSourceLoader;
   final Map<String, ConfigSource> reposByName = new HashMap<>();
-  final Map<String, ConfigSource> reposBySource = new HashMap<>();
-  final Environment environment;
+  final Map<String, StreamSource> typedSources = new HashMap<>();
+  LinkedHashMap<String, Object> repos;
 
-  public ConfigSourceResolver(Environment environment) {
+  public ConfigSourceResolver(String repoDefPath) {
 
-    defaults.put("fileName", Config.DEFAULT_PROPERTIES_FILE_NAME);
-    defaults.put("hostsName", Config.DEFAULT_HOSTS_FILE_NAME);
-    defaults.put("root", "/");
+    streamSourceLoader = ServiceLoader.load(ConfigSourceFactory.class);
 
-    this.environment = environment;
+    if (!StringUtils.hasText(repoDefPath)) {
+      logger.warn(
+          "No repo configuration file provided. Failing over to default at classpath:repo-defaults.yml");
+      repoDefPath = "classpath:repo-defaults.yml";
+    }
 
-    loader = ServiceLoader.load(ConfigSource.class);
+    LinkedHashMap<String, Object> y = loadRepoDefFile(URI.create(repoDefPath));
+    loadRepoConfig(y);
 
-    for (ConfigSource s : loader) {
-      reposBySource.put(s.getSourceName(), s);
+    if (y.containsKey("service")) {
+
+      LinkedHashMap<String, Object> service = (LinkedHashMap) y.get("service");
+
+      if (service.containsKey("defaults")) {
+        defaults.putAll((Map) service.get("defaults"));
+      }
+
+      if (service.containsKey("repos")) {
+
+        repos = (LinkedHashMap) service.get("repos");
+        for (Entry<String, Object> entry : repos.entrySet()) {
+
+          Optional<ConfigSource> cs = buildConfigSource(entry);
+          if (cs.isPresent())
+            reposByName.put(cs.get().getName().toLowerCase(), cs.get());
+
+        }
+      }
     }
   }
 
-  public ConfigSourceResolver(String repoDefPath, Environment environment) {
-    this(environment);
+  public Map<String, Object> getDefaults() {
+    return defaults;
+  }
 
-    assert StringUtils.hasText(repoDefPath) : "no repo configuration file provided.";
+  protected LinkedHashMap<String, Object> loadRepoDefFile(URI repoDefPath) {
 
-    Optional<ConfigSource> source = resolveByUri(repoDefPath);
-    RepoDef def;
+    Optional<ConfigSource> cs = buildAdHocConfigSource(repoDefPath);
 
-    if (source.isPresent() && source.get() instanceof StreamingConfigSource) {
+    if (cs.isPresent()) {
 
-      try (InputStream stream = ((StreamingConfigSource) source.get()).stream(repoDefPath)) {
+      String path = UriUtil.getPath(repoDefPath);
+      
+      Optional<StreamPacket> stream = cs.get().getStreamSource().stream(path);
 
-        Yaml yaml = new Yaml();
-        LinkedHashMap<String, Object> y = (LinkedHashMap) yaml.load(stream);
+      if (stream.isPresent()) {
 
-        if (y.containsKey("defaults")) {
-          defaults.putAll((Map) y.get("defaults"));
+        try (InputStream s = stream.get().getInputStream()) {
+
+          Yaml yaml = new Yaml();
+          LinkedHashMap<String, Object> y = (LinkedHashMap) yaml.load(s);
+          return y;
+
+        } catch (IOException e) {
+          // TODO: handle exception
         }
 
-        if (y.containsKey("service")) {
-
-          LinkedHashMap<String, Object> service = (LinkedHashMap) y.get("service");
-          if (service.containsKey("repos")) {
-
-            LinkedHashMap<String, Object> repos = (LinkedHashMap) service.get("repos");
-            for (Entry<String, Object> entry : repos.entrySet()) {
-
-              if (entry.getValue() instanceof LinkedHashMap) {
-                LinkedHashMap<String, Object> repo = (LinkedHashMap) entry.getValue();
-
-                String repoName = entry.getKey();
-
-                Optional<ConfigSource> cs = resolveBySourceName(((Map) entry.getValue()).keySet());
-
-                if (cs.isPresent()) {
-
-                  buildConfigSource(cs.get(), (Map) entry.getValue(), repoName, defaults);
-
-                } else {
-                  continue;
-                }
-              }
-            }
-          }
-        }
-
-      } catch (IOException e) {
+      } else {
         throw new IllegalArgumentException(
-            "Unable to fetch repo definitions from location " + repoDefPath, e);
+            "Unable to fetch repo definitions from location " + repoDefPath);
       }
-
-    } else {
-      throw new IllegalArgumentException(
-          "Unable to fetch repo definitions from location " + repoDefPath);
     }
 
+    return new LinkedHashMap<String, Object>();
   }
 
-  protected ConfigSource buildConfigSource(ConfigSource template, Map<String, Object> values,
-      final String name, Map<String, Object> defaults) {
+  protected Optional<ConfigSource> buildConfigSource(Entry<String, Object> entry) {
 
-    try {
+    Optional<ConfigSource> oc = Optional.empty();
 
-      if (!reposByName.containsKey(name.toLowerCase())) {
-        ConfigSource s = template.newInstance(name.toLowerCase(), values, new HashMap<>(defaults));
+    if (entry.getValue() instanceof LinkedHashMap) {
+      LinkedHashMap<String, Object> repo = (LinkedHashMap) entry.getValue();
 
-        if (s != null && EnvironmentAware.class.isAssignableFrom(s.getClass())) {
-          ((EnvironmentAware) s).setEnvironment(environment);
-        }
+      final String repoName = entry.getKey();
 
-        reposByName.put(name.toLowerCase(), s);
+      URI uri = null;
+      if (repo.containsKey(RepoDef.URI_FIELD)) {
+        uri = URI.create((String) repo.get(RepoDef.URI_FIELD));
+      } else {
+        throw new IllegalArgumentException(
+            "No " + RepoDef.URI_FIELD + " found for repo " + repoName + ". Is required.");
       }
 
-    } catch (Exception e) {
-      logger.error(e.getMessage(), e);
-      // Should never happen
+      Optional<ConfigSourceFactory> factory = Optional.empty();
+      if (repo.containsKey("streamSource")) {
+        factory = resolveFactorySourceName((String) repo.get("streamSource"));
+      }
+
+      if (!factory.isPresent()) {
+        Set<ConfigSourceFactory> sources = resolveFactoryByUri(uri);
+
+        if (!sources.isEmpty())
+          factory = Optional.of(sources.iterator().next());
+      }
+
+      if (factory.isPresent()) {
+
+        ConfigSource initializedSource = factory.get().newConfigSource(repoName.toLowerCase(),
+            (Map) entry.getValue(), new HashMap<>(defaults));
+
+        oc = Optional.of(initializedSource);
+
+      }
     }
 
-    return reposByName.get(name.toLowerCase());
+    return oc;
   }
 
-  public Optional<ConfigSource> resolveByRepoName(String repoName) {
+  protected void loadRepoConfig(LinkedHashMap<String, Object> y) {
+
+    if (y.containsKey("service")) {
+
+      LinkedHashMap<String, Object> service = (LinkedHashMap) y.get("service");
+
+      if (service.containsKey("defaults")) {
+        defaults.putAll((Map) service.get("defaults"));
+      }
+    }
+  }
+
+  public Optional<ConfigSource> buildAdHocConfigSource(final URI uri) {
+
+    Set<ConfigSourceFactory> sources = resolveFactoryByUri(uri);
+    Optional<ConfigSource> source = Optional.empty();
+
+    if (!sources.isEmpty()) {
+      ConfigSourceFactory csf = sources.iterator().next();
+      URI root = UriUtil.getRoot(uri);
+      
+      Map<String, Object> values = new HashMap<>();
+      values.put("uri", root.toString());
+      source = Optional.of(csf.newConfigSource("adhoc", values, defaults));
+    }
+
+    return source;
+  }
+
+  public Optional<ConfigSource> findByRepoName(String repoName) {
     return Optional.ofNullable(reposByName.get(repoName.toLowerCase()));
   }
 
-  public Optional<ConfigSource> resolveBySourceName(final Set<String> sourceNames) {
+  public Optional<ConfigSourceFactory> resolveFactorySourceName(String sourceNames) {
 
-    ConfigSource cs = null;
+    Optional<ConfigSourceFactory> ocs =
+        StreamSupport.stream(streamSourceLoader.spliterator(), false).filter(s -> {
+          return sourceNames.contains(s.getSourceName());
+        }).findFirst();
 
-    Optional<ConfigSource> ocs = StreamSupport.stream(loader.spliterator(), false).filter(s -> {
-      return sourceNames.contains(s.getSourceName());
-    }).findFirst();
-
-    if (ocs.isPresent()) {
-      cs = buildConfigSource(ocs.get(), new HashMap<>(), ocs.get().getSourceName(), defaults);
-    } else {
-      logger.warn("No config source found for " + sourceNames + ". Ignoring configuration.");
-    }
-
-    return Optional.ofNullable(cs);
+    return ocs;
 
   }
 
-  public Optional<ConfigSource> resolveByUri(final String uri) {
+  public Set<ConfigSourceFactory> resolveFactoryByUri(final URI uri) {
 
-    ConfigSource cs = null;
-    UriUtil i = new UriUtil(uri);
-    String repoName = i.getScheme();
-    String firstPath = i.firstPathSegment();
+    Set<ConfigSourceFactory> ocs =
+        StreamSupport.stream(streamSourceLoader.spliterator(), false).filter(s -> {
+          return s.isCompatible(uri.toString());
+        }).collect(Collectors.toSet());
 
-    if (reposByName.containsKey(firstPath.toLowerCase())) {
-
-      cs = reposByName.get(firstPath.toLowerCase());
-      repoName = firstPath;
-      logger.info("Resolving " + uri + " to repo definition " + repoName);
-
-    } else {
-
-      Optional<ConfigSource> ocs = StreamSupport.stream(loader.spliterator(), false).filter(s -> {
-        return s.isCompatible(uri);
-      }).findFirst();
-
-      if (ocs.isPresent()) {
-        cs = buildConfigSource(ocs.get(), new HashMap<>(), repoName, defaults);
-      }
-    }
-
-    return Optional.ofNullable(cs);
+    return ocs;
 
   }
 

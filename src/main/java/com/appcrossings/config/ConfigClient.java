@@ -1,5 +1,6 @@
 package com.appcrossings.config;
 
+import java.net.URI;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Timer;
@@ -10,10 +11,12 @@ import org.jasypt.encryption.pbe.config.EnvironmentStringPBEConfig;
 import org.jasypt.properties.EncryptableProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.appcrossings.config.discovery.ConfigDiscoveryStrategy;
+import com.appcrossings.config.discovery.DefaultMergeStrategy;
+import com.appcrossings.config.discovery.HostsFileDiscoveryStrategy;
+import com.appcrossings.config.exception.InitializationException;
 import com.appcrossings.config.source.ConfigSource;
-import com.appcrossings.config.strategy.DefaultConfigLookupStrategy;
-import com.appcrossings.config.strategy.DefaultMergeStrategy;
-import com.appcrossings.config.util.Environment;
+import com.appcrossings.config.util.CfgrdURI;
 import com.appcrossings.config.util.StringUtils;
 import com.appcrossings.config.util.UriUtil;
 
@@ -25,7 +28,26 @@ import com.appcrossings.config.util.UriUtil;
 public class ConfigClient implements Config {
 
   public enum Method {
-    DIRECT_PATH, HOST_FILE;
+
+    /**
+     * Fully qualified URI to the properites location
+     */
+    ABSOLUTE_URI,
+
+    /**
+     * A cfgrd:// uri format pointing at a repo name and relative path with the repo
+     */
+    CONFIGRD_URI,
+
+    /**
+     * Lookup properties location via hosts file
+     */
+    HOST_FILE,
+
+    /**
+     * Lookup properties location via configrd server
+     */
+    REDIRECT;
   }
 
   private class ReloadTask extends TimerTask {
@@ -49,23 +71,20 @@ public class ConfigClient implements Config {
 
   public final Environment environment = new Environment();
 
-  protected String fileNamePattern = DEFAULT_PROPERTIES_FILE_NAME;
+  private final AtomicReference<Properties> loadedProperties =
+      new AtomicReference<>(new Properties());
 
-  protected String hostsNamePattern = DEFAULT_HOSTS_FILE_NAME;
-
-  private final AtomicReference<Properties> loadedProperties = new AtomicReference<>();
-
-  private ConfigLookupStrategy lookupStrategy = new DefaultConfigLookupStrategy();
-
-  private MergeStrategy mergeStrategy = new DefaultMergeStrategy();
+  private ConfigDiscoveryStrategy lookupStrategy = new HostsFileDiscoveryStrategy();
 
   private final Method method;
 
-  protected final String repoDefLocation;
+  protected final String REPO_DEF_PATH = "classpath:repo-defaults.yml";
 
-  protected ConfigSourceResolver sourceResolver;
+  protected String repoDefLocation;
 
-  protected final String startLocation;
+  protected final ConfigSourceResolver sourceResolver;
+
+  protected final URI startLocation;
 
   protected StringUtils strings;
 
@@ -73,101 +92,42 @@ public class ConfigClient implements Config {
 
   protected Integer timerTTL = 0;
 
-  protected boolean traverseClasspath = SEARCH_CLASSPATH;
-
-  public ConfigClient(Properties props) throws Exception {
-
-    assert !props
-        .containsKey(Config.PATH) : "File path to hosts.properties or start location is mandatory";
-
-    this.startLocation = props.getProperty(Config.PATH);
-
-    if (props.containsKey(Config.REPO_DEF_PATH))
-      this.repoDefLocation = props.getProperty(Config.REPO_DEF_PATH);
-    else
-      this.repoDefLocation = null;
-
-    if (props.containsKey(Config.HOST_NAME))
-      getEnvironment().setHostName(props.getProperty(Config.HOST_NAME));
-
-    if (props.containsKey(Config.HOST_FILE_NAME))
-      this.hostsNamePattern = props.getProperty(Config.HOST_FILE_NAME);
-
-    if (props.containsKey(Config.PROPERTIES_FILE_NAME))
-      this.fileNamePattern = props.getProperty(Config.PROPERTIES_FILE_NAME);
-
-    if (props.containsKey(Config.SEARCH_CLASSPATH))
-      this.traverseClasspath = Boolean.parseBoolean(props.getProperty(Config.TRAVERSE_CLASSPATH));
-
-    if (props.containsKey(Config.REFRESH_RATE))
-      this.timerTTL = Integer.parseInt((String) props.getProperty(Config.REFRESH_RATE));
-
-    if (props.containsKey(Config.METHOD))
-      this.method = Method.valueOf(props.getProperty(Config.METHOD));
-    else
-      this.method = Method.HOST_FILE;
-
-    if (props.containsKey(Config.CONFIG_MERGE_STRATEGY))
-      this.mergeStrategy = (MergeStrategy) props.get(Config.CONFIG_MERGE_STRATEGY);
-
-    if (props.containsKey(Config.CONFIG_LOOKUP_STRATEGY))
-      this.lookupStrategy = (ConfigLookupStrategy) props.get(Config.CONFIG_LOOKUP_STRATEGY);
-
-    this.strings = new StringUtils(environment.getProperties());
-
-  }
-
   /**
    * 
-   * @param path - The path of the starting point for config exploration. Can be a
-   *        default.properties or hosts.properties path
+   * @param uri - The path of the starting point for config exploration. Can be a default.properties
+   *        or hosts.properties path
    * @param refresh - The period in seconds at which the config properties should be refreshed. 0
    *        indicates no automated timer
    * @throws Exception
    */
-  public ConfigClient(String path, int refresh, Method method) {
-    this(path, method);
-    this.timerTTL = refresh;
+  public ConfigClient(String uri) {
+
+    assert StringUtils.hasText(uri) : "Host or properties file path null or empty";
+    this.startLocation = URI.create(uri);
+    this.method = Method.ABSOLUTE_URI;
+    this.sourceResolver = new ConfigSourceResolver(REPO_DEF_PATH);
   }
 
   /**
    * 
-   * @param path The path of the starting point for config exploration. Can be a default.properties
+   * @param uri The path of the starting point for config exploration. Can be a default.properties
    *        or hosts.properties path
    * @throws Exception
    */
-  public ConfigClient(String path, Method method) {
-    this.startLocation = path;
-    this.method = method;
-    this.repoDefLocation = null;
-  }
+  public ConfigClient(String repoDefPath, String uri, Method method) {
 
-  /**
-   * 
-   * @param path The path of the starting point for config exploration. Can be a default.properties
-   *        or hosts.properties path
-   * @throws Exception
-   */
-  public ConfigClient(String repoDefPath, String path, Method method) {
-    this.startLocation = path;
-    this.method = method;
+    assert StringUtils.hasText(repoDefPath) : "repo.def.path is null or empty";
+    assert StringUtils.hasText(uri) : "Host or properties file path null or empty";
+    assert method != null : "Method must be specified";
+
     this.repoDefLocation = repoDefPath;
+    this.startLocation = URI.create(uri);
+    this.method = method;
+    this.sourceResolver = new ConfigSourceResolver(this.repoDefLocation);
   }
 
   public Environment getEnvironment() {
     return environment;
-  }
-
-  public String getFileNamePattern() {
-    return fileNamePattern;
-  }
-
-  public String getHostsNamePattern() {
-    return hostsNamePattern;
-  }
-
-  public MergeStrategy getMergeStrategy() {
-    return mergeStrategy;
   }
 
   public Properties getProperties() {
@@ -181,7 +141,6 @@ public class ConfigClient implements Config {
     String value = loadedProperties.get().getProperty(key);
 
     if (StringUtils.hasText(value)) {
-      value = strings.fill(value);
       return strings.cast(value, clazz);
     }
 
@@ -205,92 +164,147 @@ public class ConfigClient implements Config {
 
   public void init() {
 
-    String environmentName = environment.detectEnvironment();
-    String hostName = environment.detectHostName();
-    Optional<String> startPath = Optional.empty();
+    Optional<URI> startPath = Optional.empty();
 
-    if (StringUtils.hasText(this.repoDefLocation)) {
-      this.sourceResolver = new ConfigSourceResolver(this.repoDefLocation, environment);
-    } else {
-      this.sourceResolver = new ConfigSourceResolver(environment);
-    }
+    if (this.method.equals(Method.ABSOLUTE_URI)) {
 
-    if (this.method.equals(Method.HOST_FILE)) {
-
-      logger.info("Loading hosts file at " + startLocation);
-
-      UriUtil uri = new UriUtil(startLocation);
-      
-      Optional<ConfigSource> configSource = this.sourceResolver.resolveByUri(startLocation);
-
-      if (configSource.isPresent()) {
-        Properties hosts = configSource.get().fetchConfig(startLocation);
-
-        if (encryptor != null)
-          hosts = new EncryptableProperties(hosts, encryptor);
-
-        if (hosts.isEmpty()) {
-          throw new IllegalArgumentException(
-              "Hosts file empty or wrong hosts file path provided: " + startLocation);
-        }
-
-        startPath = lookupStrategy.lookupConfigPath(hosts, environment.getProperties());
+      if(UriUtil.validate(startLocation).isAbsolute().invalid()) {
+        throw new IllegalArgumentException("Uri must be an absolute URI to the config location.");
       }
-
-    } else if (this.method.equals(Method.DIRECT_PATH)) {
-
+      
       startPath = Optional.of(this.startLocation);
 
+    } else {
+
+      /*
+       * Any of the below resolvers can return either an absolute URI or a cfgrd URI therefore a
+       * repo configuration is required. They SHOULD NOT return another redirect URI but there is
+       * nothing preventing it
+       */
+
+      if (this.method.equals(Method.HOST_FILE)) {
+
+        startPath = resolveConfigPathFromHostFile(startLocation);
+
+      } else if (this.method.equals(Method.REDIRECT)) {
+
+        startPath = resolveConfigPathFromConfigrd(startLocation);
+
+      } else if (this.method.equals(Method.CONFIGRD_URI)) {
+
+        startPath = Optional.of(this.startLocation);
+
+      }
     }
+
+
+    Optional<ConfigSource> configSource = Optional.empty();
 
     if (startPath.isPresent()) {
 
-      mergeStrategy.clear();
-
-      Optional<ConfigSource> configSource = this.sourceResolver.resolveByUri(startPath.get());
-
-      logger.debug("Searching for properties beginning at: " + startPath);
-
-      if (configSource.isPresent()) {
-        Properties ps = configSource.get().traverseConfigs(startPath.get());
-        mergeStrategy.addConfig(ps);
-
-        if (encryptor != null)
-          ps = new EncryptableProperties(ps, encryptor);
-
-        if (ps.isEmpty()) {
-          logger.warn("Counldn't find any properties for host " + hostName + " or environment "
-              + environmentName);
-        }
-
-        loadedProperties.set(ps);
-      }
+      configSource = resolveConfigSource(startPath.get());
 
     } else {
-      logger.warn("Counldn't find any properties for host " + hostName + " or environment "
-          + environmentName);
+
+      logger.error(
+          "Unable to locate a config properties path using search location " + this.startLocation);
+
+      throw new InitializationException(
+          "Unable to locate a config properties path using search location " + this.startLocation);
     }
 
-    mergeStrategy.addConfig(environment.getProperties());
-    strings = new StringUtils(mergeStrategy.merge());
-    setRefreshRate(timerTTL);
+    final MergeStrategy merge = new DefaultMergeStrategy();
+
+    if (configSource.isPresent()) {
+
+      final String path = UriUtil.getPath(startPath.get());
+
+      Properties p = configSource.get().get(path);
+
+      if (encryptor != null)
+        p = new EncryptableProperties(p, encryptor);
+
+      if (p.isEmpty()) {
+        logger.warn("Config location " + startPath.get()
+            + " return an empty set of properties. Please check the location");
+      }
+
+      merge.addConfig(p);
+
+    } else {
+
+      logger.error("Unable to locate a config source for search location " + this.startLocation
+          + " and config path " + startPath.toString());
+
+      throw new InitializationException("Unable to locate a config source for search location "
+          + this.startLocation + " and config path " + startPath.toString());
+
+    }
+
+    merge.addConfig(environment.getProperties());
+    Properties merged = merge.merge();
+    strings = new StringUtils(merged);
+
+    if (merged.isEmpty()) {
+      logger.warn("Properties collection returned empty per search location " + this.startLocation
+          + " and config path " + startPath.toString()
+          + ". If this is unexpected, please check your configuration.");
+    } else {
+
+      for (Object key : merged.keySet()) {
+
+        String value = merged.getProperty((String) key);
+        loadedProperties.get().put(key, strings.fill(value));
+
+      }
+    }
+
+    logger.info("ConfigClient initialized.");
+  }
+
+  protected Optional<URI> resolveConfigPathFromConfigrd(URI serverPath) {
+
+    return Optional.empty();
 
   }
 
-  public boolean isTraverseClasspath() {
-    return traverseClasspath;
+  protected Optional<URI> resolveConfigPathFromHostFile(URI hostFilePath) {
+
+    String environmentName = environment.detectEnvironment();
+    String hostName = environment.detectHostName();
+
+    Properties hosts = new Properties();
+    logger.info("Loading hosts file at " + startLocation);
+    Optional<URI> startPath = Optional.empty();
+
+    Optional<ConfigSource> source = this.sourceResolver.buildAdHocConfigSource(hostFilePath);
+
+    if (source.isPresent()) {
+      String path = UriUtil.getPath(hostFilePath);
+
+      hosts = source.get().getRaw(path);
+      startPath = lookupStrategy.lookupConfigPath(hosts, environment.getProperties());
+    }
+
+    return startPath;
   }
 
-  public void setFileNamePattern(String fileNamePattern) {
-    this.fileNamePattern = fileNamePattern;
-  }
+  protected Optional<ConfigSource> resolveConfigSource(URI startPath) {
 
-  public void setHostsNamePattern(String hostsNamePattern) {
-    this.hostsNamePattern = hostsNamePattern;
-  }
+    Optional<ConfigSource> cs = Optional.empty();
 
-  public void setMergeStrategy(MergeStrategy mergeStrategy) {
-    this.mergeStrategy = mergeStrategy;
+    if (CfgrdURI.isCfgrdURI(startPath)) {
+
+      CfgrdURI cfgrd = new CfgrdURI(startPath);
+
+      cs = this.sourceResolver.findByRepoName(cfgrd.getRepoName());
+
+    } else {
+
+      cs = this.sourceResolver.buildAdHocConfigSource(startPath);
+    }
+
+    return cs;
   }
 
   /**
@@ -341,7 +355,5 @@ public class ConfigClient implements Config {
     this.encryptor = config;
   }
 
-  public void setTraverseClasspath(boolean traverseClasspath) {
-    this.traverseClasspath = traverseClasspath;
-  }
+
 }

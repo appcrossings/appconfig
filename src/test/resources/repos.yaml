@@ -2,29 +2,16 @@ service:
   defaults:
     fileName: default.properties
     hostsName: hosts.properties
-    root: /
   repos:
     git-master:
-      git:
-        uri: git@github.com:appcrossings/appconfig-client.git#master
-        root: src/test/resources
-        user: null
-        password: null
-        context: /appx-a
+      uri: git://git@github.com:appcrossings/appconfig-client.git#master
+      root: src/test/resources
     http-resource:
-      http:
-        uri: https://github.com/appcrossings/appconfig-client/tree/master/src/test/resources
-        user: null
-        password: null
-        context: /appx-b
-        mergeStrategyClass: com.appcrossings.config.strategy.DefaultMergeStrategy
+      uri: https://github.com/appcrossings/appconfig-client/tree/master/src/test/resources
     tmp-configs:
-      file:
-        uri: file:/var/tmp/configs
-        context: /appx-c
+      uri: file:/var/tmp/configs
     appx-d:
-      file:
-        root: /dev
-        uri: classpath:/env
-        fileName: default.json
-        context: /appx-d
+      uri: classpath:/env/dev
+      fileName: default.json
+    default:
+      uri: classpath:/

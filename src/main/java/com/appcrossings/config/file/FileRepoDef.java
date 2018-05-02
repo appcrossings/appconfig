@@ -1,10 +1,13 @@
 package com.appcrossings.config.file;
 
+import java.net.URI;
 import java.util.Map;
 import org.apache.commons.beanutils.BeanUtils;
 import com.appcrossings.config.source.DefaultRepoDef;
 import com.appcrossings.config.source.FileBasedRepo;
 import com.appcrossings.config.source.SecuredRepo;
+import com.appcrossings.config.util.URIBuilder;
+import com.appcrossings.config.util.UriUtil;
 
 @SuppressWarnings("serial")
 public class FileRepoDef extends DefaultRepoDef implements FileBasedRepo, SecuredRepo {
@@ -12,15 +15,13 @@ public class FileRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
   String fileName;
   String hostsName;
   String passWord;
-  String root;
-  String uri;
   String userName;
 
   /**
    * For testing purposes
    */
-  protected FileRepoDef() {
-    super();
+  public FileRepoDef(String name) {
+    super(name);
   }
 
   public FileRepoDef(String name, Map<String, Object> values) {
@@ -32,6 +33,7 @@ public class FileRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
     } catch (Exception e) {
       throw new IllegalArgumentException(e);
     }
+
   }
 
   public String getFileName() {
@@ -58,22 +60,8 @@ public class FileRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
     this.passWord = passWord;
   }
 
-  public void setRoot(String root) {
-    this.root = root;
-  }
-
   public void setUserName(String userName) {
     this.userName = userName;
-  }
-
-  @Override
-  public String getConfigFileName() {
-    return fileName;
-  }
-
-  @Override
-  public String getHostsFileName() {
-    return hostsName;
   }
 
   @Override
@@ -83,22 +71,31 @@ public class FileRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
   }
 
   @Override
-  public String getRoot() {
-    return root;
-  }
-
-  public String getUri() {
-    return uri;
-  }
-
-  @Override
-  public String getUserName() {
+  public String getUsername() {
 
     return userName;
   }
 
-  public void setUri(String uri) {
-    this.uri = uri;
+  @Override
+  public String[] valid() {
+
+    String[] err = new String[] {};
+    
+    URI uri = toURI();
+
+    if (UriUtil.validate(uri).isAbsolute().invalid()) {
+      err = new String[] {"Uri must be absolute"};
+    }
+
+    return err;
+  }
+
+  @Override
+  public URI toURI() {
+    URIBuilder builder = URIBuilder.create(URI.create(getUri()));
+    builder.setFileNameIfMissing(getFileName()).setPasswordIfMissing(getPassWord())
+        .setUsernameIfMissing(getUsername());
+    return builder.build();
   }
 
 }

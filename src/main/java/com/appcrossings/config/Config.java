@@ -1,8 +1,7 @@
 package com.appcrossings.config;
 
 import java.util.Properties;
-import com.appcrossings.config.strategy.DefaultMergeStrategy;
-import com.appcrossings.config.util.Environment;
+import com.appcrossings.config.discovery.DefaultMergeStrategy;
 
 /**
  * Interface for configuration implementations.
