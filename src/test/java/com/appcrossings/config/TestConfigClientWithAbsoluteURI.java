@@ -19,6 +19,14 @@ public class TestConfigClientWithAbsoluteURI {
     ConfigClient client = new ConfigClient("http://env/dev/simple");
     client.init();
   }
+  
+  @Test
+  public void testGetPropertiesFromUsingDefaultRepo() throws Exception {
+    ConfigClient client = new ConfigClient("cfgrd://default/env/dev/simple");
+    client.init();
+
+    Assert.assertNotNull(client.getProperty("property.3.name", String.class));
+  }
 
 
   @Test
