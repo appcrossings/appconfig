@@ -218,8 +218,9 @@ public class ConfigClient implements Config {
     if (configSource.isPresent()) {
 
       final String path = UriUtil.getPath(startPath.get());
+      final String[] names = UriUtil.getFragments(startPath.get());
 
-      Properties p = configSource.get().get(path);
+      Properties p = configSource.get().get(path, names);
 
       if (encryptor != null)
         p = new EncryptableProperties(p, encryptor);
@@ -234,10 +235,10 @@ public class ConfigClient implements Config {
     } else {
 
       logger.error("Unable to locate a config source for search location " + this.startLocation
-          + " and config path " + startPath.toString());
+          + " and config path " + startPath.get());
 
       throw new InitializationException("Unable to locate a config source for search location "
-          + this.startLocation + " and config path " + startPath.toString());
+          + this.startLocation + " and config path " + startPath.get());
 
     }
 
@@ -247,7 +248,7 @@ public class ConfigClient implements Config {
 
     if (merged.isEmpty()) {
       logger.warn("Properties collection returned empty per search location " + this.startLocation
-          + " and config path " + startPath.toString()
+          + " and config path " + startPath.get()
           + ". If this is unexpected, please check your configuration.");
     } else {
 

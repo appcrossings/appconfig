@@ -86,6 +86,20 @@ public class UriUtil {
     return dirs;
   }
 
+  public static String[] getFragments(URI uri) {
+    
+    String[] frags = new String[] {};
+    
+    if(StringUtils.hasText(uri.getFragment())) {
+      String frag = uri.getFragment().trim();
+      
+      frags = frag.split(",");
+    }
+    
+    return frags;
+    
+  }
+  
   public static String[] getDirSegements(URI uri) {
 
     String path = getPath(uri);

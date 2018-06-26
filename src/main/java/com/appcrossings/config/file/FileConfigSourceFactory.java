@@ -15,7 +15,7 @@ public class FileConfigSourceFactory implements ConfigSourceFactory {
 
     StreamSource source = newStreamSource(name, values, defaults);
 
-    DefaultFileConfigSource configSource = new DefaultFileConfigSource(source);
+    DefaultFileConfigSource configSource = new DefaultFileConfigSource(source, values);
     return configSource;
   }
 

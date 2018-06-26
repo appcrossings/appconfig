@@ -7,7 +7,14 @@ service:
       uri: git://git@github.com:appcrossings/appconfig-client.git#master
       root: src/test/resources
     http-resource:
-      uri: https://github.com/appcrossings/appconfig-client/tree/master/src/test/resources
+      uri: https://raw.githubusercontent.com/appcrossings/appconfig-client/master/src/test/resources
+      username: 
+      password:
+      fileName: default.properties
+      hostsName: hosts.properties
+      named:
+        custom: env/dev/custom
+        simple: env/dev/simple
     tmp-configs:
       uri: file:/var/tmp/configs
     appx-d:
@@ -15,3 +22,6 @@ service:
       fileName: default.json
     default:
       uri: classpath:/
+      named:
+        custom: env/dev/custom
+        simple: env/dev/simple

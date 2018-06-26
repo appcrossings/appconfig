@@ -2,6 +2,8 @@ package com.appcrossings.config.source;
 
 import java.io.Serializable;
 import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 
 @SuppressWarnings("serial")
 public abstract class DefaultRepoDef implements Serializable, RepoDef {
@@ -10,6 +12,15 @@ public abstract class DefaultRepoDef implements Serializable, RepoDef {
   protected String sourceName;
   protected String uri;
   protected String streamSource;
+  protected Map<String, String> named = new HashMap<>();
+
+  public Map<String, String> getNamed() {
+    return named;
+  }
+
+  public void setNamed(Map<String, String> namedPaths) {
+    this.named = namedPaths;
+  }
 
   public String getStreamSource() {
     return streamSource;

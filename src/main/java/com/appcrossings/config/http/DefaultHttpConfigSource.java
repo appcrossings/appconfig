@@ -1,14 +1,17 @@
 package com.appcrossings.config.http;
 
 import java.net.URI;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import org.apache.commons.collections.map.HashedMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.appcrossings.config.MergeStrategy;
 import com.appcrossings.config.discovery.DefaultMergeStrategy;
 import com.appcrossings.config.processor.ProcessorSelector;
 import com.appcrossings.config.source.ConfigSource;
+import com.appcrossings.config.source.RepoDef;
 import com.appcrossings.config.source.StreamPacket;
 import com.appcrossings.config.source.StreamSource;
 import com.appcrossings.config.util.DirectoryTraverse;
@@ -18,9 +21,16 @@ public class DefaultHttpConfigSource implements ConfigSource {
 
   private final static Logger log = LoggerFactory.getLogger(DefaultHttpConfigSource.class);
   private final StreamSource streamSource;
+  private final Map<String, String> namedPaths;
 
-  public DefaultHttpConfigSource(StreamSource source) {
+  protected DefaultHttpConfigSource(StreamSource source, Map<String, Object> values) {
     this.streamSource = source;
+    
+    if (values.containsKey(RepoDef.NAMED_PATHS_FIELD)) {
+      this.namedPaths = (Map) values.get(RepoDef.NAMED_PATHS_FIELD);
+    } else {
+      this.namedPaths = new HashedMap();
+    }
   }
 
   @Override
@@ -41,27 +51,45 @@ public class DefaultHttpConfigSource implements ConfigSource {
     return p;
   }
 
-  public Properties get(String path) {
+  public Properties get(String path, String... names) {
+    
+ final MergeStrategy merge = new DefaultMergeStrategy();
+    
+    if(names.length > 0) {
+      
+      for(String name: names) {
+        
+        path = namedPaths.get(name);
+        
+        if(!StringUtils.hasText(path))
+          continue;
+          
+        final DirectoryTraverse traverse = new DirectoryTraverse(path);
 
-    Properties props = new Properties();
+        do {
 
-    if (StringUtils.hasText(path)) {
+          Properties props = getRaw(traverse.decend().toString());
+          merge.addConfig(props);
 
-      final MergeStrategy merge = new DefaultMergeStrategy();
+        } while (traverse.hasNextDown());
+        
+      }
+
+    } else if (StringUtils.hasText(path)) {
 
       final DirectoryTraverse traverse = new DirectoryTraverse(path);
 
       do {
 
-        Properties p = getRaw(traverse.decend());
-        merge.addConfig(p);
+        Properties props = getRaw(traverse.decend().toString());
+        merge.addConfig(props);
 
       } while (traverse.hasNextDown());
 
-      props = merge.merge();
     }
 
-    return props;
+    return merge.merge();
+    
   }
 
   @Override

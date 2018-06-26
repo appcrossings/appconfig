@@ -10,7 +10,7 @@ public interface ConfigSource {
    * @param path Path extending the pre-configured uri in the repo definition
    * @return
    */
-  public Properties get(String path);
+  public Properties get(String path, String...names);
 
   /**
    * Retrieves a single node of the config given by the properties path. No traversal.

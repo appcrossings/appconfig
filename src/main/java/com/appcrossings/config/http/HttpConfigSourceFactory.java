@@ -14,7 +14,7 @@ public class HttpConfigSourceFactory implements ConfigSourceFactory {
 
     StreamSource source = newStreamSource(name, values, defaults);
 
-    DefaultHttpConfigSource configSource = new DefaultHttpConfigSource(source);
+    DefaultHttpConfigSource configSource = new DefaultHttpConfigSource(source, values);
     return configSource;
   }
 
