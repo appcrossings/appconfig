@@ -2,6 +2,7 @@ package com.appcrossings.config.util;
 
 import java.io.File;
 import java.net.URI;
+import java.util.StringJoiner;
 
 public class URIBuilder {
 
@@ -13,6 +14,7 @@ public class URIBuilder {
   private URI uri;
   private String userName;
   private String fileName;
+  private String[] fragments;
 
   public static URIBuilder create() {
     return new URIBuilder();
@@ -127,6 +129,16 @@ public class URIBuilder {
       s.append(fileName);
     }
 
+    if (this.fragments != null && this.fragments.length > 0) {
+      StringJoiner joiner = new StringJoiner(",", "#", "");
+
+      for (String name : this.fragments) {
+        joiner.add(name);
+      }
+      
+      s.append(joiner.toString());
+    }
+
     return URI.create(s.toString());
 
   }
@@ -157,6 +169,11 @@ public class URIBuilder {
 
   public URIBuilder setPassword(String passWord) {
     this.passWord = passWord;
+    return this;
+  }
+
+  public URIBuilder setFragment(String... names) {
+    this.fragments = names;
     return this;
   }
 

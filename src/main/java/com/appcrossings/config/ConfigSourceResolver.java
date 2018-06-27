@@ -26,6 +26,9 @@ import com.appcrossings.config.util.UriUtil;
 public class ConfigSourceResolver {
 
   private final static Logger logger = LoggerFactory.getLogger(ConfigSourceResolver.class);
+  
+  public final static String DEFAULT_REPO_NAME = "default";
+  public final static String DEFAULT_REPO_LOCATION = "classpath:repo-defaults.yml";
 
   final Map<String, Object> defaults = new HashMap<>();
   final ServiceLoader<ConfigSourceFactory> streamSourceLoader;
@@ -39,8 +42,8 @@ public class ConfigSourceResolver {
 
     if (!StringUtils.hasText(repoDefPath)) {
       logger.warn(
-          "No repo configuration file provided. Failing over to default at classpath:repo-defaults.yml");
-      repoDefPath = "classpath:repo-defaults.yml";
+          "No repo configuration file provided. Failing over to default at " + DEFAULT_REPO_LOCATION);
+      repoDefPath = DEFAULT_REPO_LOCATION;
     }
 
     LinkedHashMap<String, Object> y = loadRepoDefFile(URI.create(repoDefPath));
