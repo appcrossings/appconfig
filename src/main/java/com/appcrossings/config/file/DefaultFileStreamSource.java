@@ -21,21 +21,6 @@ public class DefaultFileStreamSource implements StreamSource, AdHocStreamSource 
   private final FileRepoDef def;
   private final URIBuilder builder;
 
-  protected boolean isClasspath(String path) {
-    return path.trim().startsWith("classpath:");
-  }
-
-  protected boolean isFilePath(String path) {
-    return path.trim().startsWith("file:");
-  }
-
-  protected boolean isPath(String path) {
-    URI uri = URI.create(path);
-    uri.getScheme();
-
-    return path.trim().startsWith(File.separator);
-  }
-
   public DefaultFileStreamSource(FileRepoDef def) {
     this.def = def;
     URI uri = def.toURI();
