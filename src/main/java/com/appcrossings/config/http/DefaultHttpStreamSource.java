@@ -1,6 +1,5 @@
 package com.appcrossings.config.http;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.UnknownHostException;
@@ -95,14 +94,13 @@ public class DefaultHttpStreamSource implements StreamSource, AdHocStreamSource 
       }
 
     } catch (UnknownHostException e) {
-    
+
       log.error(e.getMessage(), e);
       throw new IllegalArgumentException(e.getMessage());
-   
-    } catch (FileNotFoundException e) {
-      // nothing, return empty
-    } catch (IOException e) {
-      // nothing, return empty
+
+    } catch (Exception e) {
+      log.debug(e.getMessage(), e);
+      // nothing else
     }
 
     return stream;

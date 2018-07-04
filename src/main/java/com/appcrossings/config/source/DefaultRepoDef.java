@@ -13,9 +13,18 @@ public abstract class DefaultRepoDef implements Serializable, RepoDef {
   protected String uri;
   protected String streamSource;
   protected Map<String, String> named = new HashMap<>();
+  protected Map<String, String> vendor = new HashMap<>();
 
   public Map<String, String> getNamed() {
     return named;
+  }
+
+  protected Map<String, String> getVendor() {
+    return vendor;
+  }
+
+  protected void setVendor(Map<String, String> vendor) {
+    this.vendor = vendor;
   }
 
   public void setNamed(Map<String, String> namedPaths) {
@@ -64,8 +73,8 @@ public abstract class DefaultRepoDef implements Serializable, RepoDef {
   public void setName(String name) {
     this.name = name;
   }
-  
+
   public abstract String[] valid();
-  
+
   public abstract URI toURI();
 }

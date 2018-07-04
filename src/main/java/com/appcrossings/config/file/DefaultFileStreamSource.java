@@ -63,7 +63,8 @@ public class DefaultFileStreamSource implements StreamSource, AdHocStreamSource 
         log.info("File not found at " + uri.toString());
       }
     } catch (FileNotFoundException e) {
-      // nothing, will be empty stream
+      log.debug(e.getMessage(), e);
+      // nothing else
     }
 
     return Optional.ofNullable(p);
