@@ -2,7 +2,6 @@ package com.appcrossings.config.http;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,7 +31,7 @@ public class TestGetRawPropertiesFile {
   @Test
   public void testPullWithDefaultFileName() throws Exception {
 
-    Properties p = source.getRaw("/env/dev/");
+    Map<String, Object> p = source.getRaw("/env/dev/");
 
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
@@ -42,17 +41,17 @@ public class TestGetRawPropertiesFile {
   @Test
   public void testPullWithSpecificFileName() throws Exception {
 
-    Properties p = source.getRaw("/env/dev/default.properties");
+    Map<String, Object> p = source.getRaw("/env/dev/default.properties");
 
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
 
   }
-  
+
   @Test
   public void testTraverseHttp() throws Exception {
 
-    Properties p = source.get("/env/dev/default.properties");
+    Map<String, Object> p = source.get("/env/dev/default.properties");
 
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));

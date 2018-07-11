@@ -1,11 +1,11 @@
 package com.appcrossings.config.discovery;
 
 import java.net.URI;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 
 public interface ConfigDiscoveryStrategy {
 
-  public Optional<URI> lookupConfigPath(Properties hosts, Properties envProps);
+  public Optional<URI> lookupConfigPath(Map<String, Object> hosts, Map<String, Object> envProps);
 
 }

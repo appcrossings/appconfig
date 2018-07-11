@@ -2,16 +2,17 @@ package com.appcrossings.config.discovery;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
 import com.appcrossings.config.MergeStrategy;
 
 public class DefaultMergeStrategy implements MergeStrategy {
 
-  private final List<Properties> all = new ArrayList<>();
+  private final List<Map<String, Object>> all = new ArrayList<>();
 
   @Override
-  public void addConfig(Properties props) {
+  public void addConfig(Map<String, Object> props) {
     all.add(props);
   }
 
@@ -21,14 +22,14 @@ public class DefaultMergeStrategy implements MergeStrategy {
   }
 
   @Override
-  public Properties merge() {
+  public Map<String, Object> merge() {
 
-    List<Properties> copy = new ArrayList<>(all);
+    List<Map<String, Object>> copy = new ArrayList<>(all);
     Collections.reverse(copy); // sort from root to highest
 
-    Properties ps = new Properties();
+    Map<String, Object> ps = new HashMap<>();
 
-    for (Properties p : copy) {
+    for (Map p : copy) {
       ps.putAll(p);
     }
     clear();

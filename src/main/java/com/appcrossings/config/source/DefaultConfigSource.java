@@ -23,7 +23,7 @@ public abstract class DefaultConfigSource implements ConfigSource {
     }
   }
 
-  public Properties get(String path, String... names) {
+  public Map<String, Object> get(String path, String... names) {
 
     final MergeStrategy merge = new DefaultMergeStrategy();
 
@@ -40,7 +40,7 @@ public abstract class DefaultConfigSource implements ConfigSource {
 
         do {
 
-          Properties props = getRaw(traverse.decend().toString());
+          Map<String, Object> props = getRaw(traverse.decend().toString());
           merge.addConfig(props);
 
         } while (traverse.hasNextDown());
@@ -53,7 +53,7 @@ public abstract class DefaultConfigSource implements ConfigSource {
 
       do {
 
-        Properties props = getRaw(traverse.decend().toString());
+        Map<String, Object> props = getRaw(traverse.decend().toString());
         merge.addConfig(props);
 
       } while (traverse.hasNextDown());

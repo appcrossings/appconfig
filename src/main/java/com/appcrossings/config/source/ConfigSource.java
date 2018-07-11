@@ -1,6 +1,6 @@
 package com.appcrossings.config.source;
 
-import java.util.Properties;
+import java.util.Map;
 
 public interface ConfigSource {
 
@@ -10,7 +10,7 @@ public interface ConfigSource {
    * @param path Path extending the pre-configured uri in the repo definition
    * @return
    */
-  public Properties get(String path, String...names);
+  public Map<String, Object> get(String path, String... names);
 
   /**
    * Retrieves a single node of the config given by the properties path. No traversal.
@@ -18,12 +18,12 @@ public interface ConfigSource {
    * @param path Path extending the pre-configured uri in the repo definition
    * @return
    */
-  public Properties getRaw(String path);
-  
+  public Map<String, Object> getRaw(String path);
+
   public StreamSource getStreamSource();
 
   public boolean isCompatible(StreamSource source);
-  
+
   public String getName();
 
 

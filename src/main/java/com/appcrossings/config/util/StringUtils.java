@@ -1,10 +1,8 @@
 package com.appcrossings.config.util;
 
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.beanutils.ConvertUtilsBean;
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.lang3.text.StrSubstitutor;
 
 public class StringUtils {
@@ -25,9 +23,8 @@ public class StringUtils {
 
   protected AtomicReference<StrSubstitutor> sub = new AtomicReference<>(new StrSubstitutor());
 
-  public StringUtils(Properties props) {
-    Map<String, String> vals = new HashedMap();
-    props.forEach((k, v) -> vals.put((String) k, (String) v));
+  public StringUtils(Map<String, Object> vals) {
+
     sub.set(new StrSubstitutor(vals));
     sub.get().setVariablePrefix(DEFAULT_PLACEHOLDER_PREFIX);
     sub.get().setVariableSuffix(DEFAULT_PLACEHOLDER_SUFFIX);

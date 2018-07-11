@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.source.ConfigSourceFactory;
+import com.appcrossings.config.source.PropertyPacket;
 import com.appcrossings.config.source.RepoDef;
 import com.appcrossings.config.source.StreamPacket;
 import com.appcrossings.config.source.StreamSource;
@@ -26,7 +27,7 @@ import com.appcrossings.config.util.UriUtil;
 public class ConfigSourceResolver {
 
   private final static Logger logger = LoggerFactory.getLogger(ConfigSourceResolver.class);
-  
+
   public final static String DEFAULT_REPO_NAME = "default";
   public final static String DEFAULT_REPO_LOCATION = "classpath:repo-defaults.yml";
 
@@ -41,8 +42,8 @@ public class ConfigSourceResolver {
     streamSourceLoader = ServiceLoader.load(ConfigSourceFactory.class);
 
     if (!StringUtils.hasText(repoDefPath)) {
-      logger.warn(
-          "No repo configuration file provided. Failing over to default at " + DEFAULT_REPO_LOCATION);
+      logger.warn("No repo configuration file provided. Failing over to default at "
+          + DEFAULT_REPO_LOCATION);
       repoDefPath = DEFAULT_REPO_LOCATION;
     }
 
@@ -82,12 +83,12 @@ public class ConfigSourceResolver {
     if (cs.isPresent()) {
 
       String path = UriUtil.getPath(repoDefPath);
-      
-      Optional<StreamPacket> stream = cs.get().getStreamSource().stream(path);
 
-      if (stream.isPresent()) {
+      Optional<PropertyPacket> stream = cs.get().getStreamSource().stream(path);
 
-        try (InputStream s = stream.get().getInputStream()) {
+      if (stream.isPresent() && stream.get() instanceof StreamPacket) {
+
+        try (InputStream s = ((StreamPacket) stream.get()).getInputStream()) {
 
           Yaml yaml = new Yaml();
           LinkedHashMap<String, Object> y = (LinkedHashMap) yaml.load(s);
@@ -168,7 +169,7 @@ public class ConfigSourceResolver {
     if (!sources.isEmpty()) {
       ConfigSourceFactory csf = sources.iterator().next();
       URI root = UriUtil.getRoot(uri);
-      
+
       Map<String, Object> values = new HashMap<>();
       values.put("uri", root.toString());
       source = Optional.of(csf.newConfigSource("adhoc", values, defaults));

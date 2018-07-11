@@ -49,10 +49,10 @@ public class TestFileConfigSource {
     source = source = factory.newConfigSource("TestFileConfigSource",
         (Map) Maps.newHashMap("uri", "classpath:/"), defaults);
 
-    Properties p = source.get("env/dev/default.properties");
+    Map<String, Object> p = source.get("env/dev/default.properties");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
-    Assert.assertEquals(p.getProperty("property.1.name"), "value1");
+    Assert.assertEquals(p.get("property.1.name"), "value1");
 
   }
   
@@ -62,10 +62,10 @@ public class TestFileConfigSource {
     source = source = factory.newConfigSource("TestFileConfigSource",
         (Map) Maps.newHashMap("uri", "classpath:/"), defaults);
 
-    Properties p = source.get("env/dev/");
+    Map<String, Object>  p = source.get("env/dev/");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
-    Assert.assertEquals(p.getProperty("property.1.name"), "value1");
+    Assert.assertEquals(p.get("property.1.name"), "value1");
 
   }
 
@@ -75,10 +75,10 @@ public class TestFileConfigSource {
     source = source = factory.newConfigSource("TestFileConfigSource",
         (Map) Maps.newHashMap("uri", "file:" + folder.getRoot()), defaults);
 
-    Properties p = source.get("/env/dev/default.properties");
+    Map<String, Object>  p = source.get("/env/dev/default.properties");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
-    Assert.assertEquals(p.getProperty("property.1.name"), "value1");
+    Assert.assertEquals(p.get("property.1.name"), "value1");
 
   }
 
@@ -88,10 +88,10 @@ public class TestFileConfigSource {
     source = source = factory.newConfigSource("TestFileConfigSource",
         (Map) Maps.newHashMap("uri", "/env/dev/"), defaults);
 
-    Properties p = source.get("/");
+    Map<String, Object>  p = source.get("/");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
-    Assert.assertEquals(p.getProperty("property.1.name"), "value1");
+    Assert.assertEquals(p.get("property.1.name"), "value1");
 
   }
 
@@ -101,10 +101,10 @@ public class TestFileConfigSource {
     source = source = factory.newConfigSource("TestFileConfigSource",
         (Map) Maps.newHashMap("uri", "classpath:/"), defaults);
 
-    Properties p = source.getRaw("env/hosts.properties");
+    Map<String, Object>  p = source.getRaw("env/hosts.properties");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("michelangello"));
-    Assert.assertEquals(p.getProperty("michelangello"), "classpath:/env/dev/");
+    Assert.assertEquals(p.get("michelangello"), "classpath:/env/dev/");
 
   }
 
