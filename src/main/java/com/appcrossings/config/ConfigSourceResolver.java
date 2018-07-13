@@ -29,13 +29,24 @@ public class ConfigSourceResolver {
   private final static Logger logger = LoggerFactory.getLogger(ConfigSourceResolver.class);
 
   public final static String DEFAULT_REPO_NAME = "default";
-  public final static String DEFAULT_REPO_LOCATION = "classpath:repo-defaults.yml";
+  public static String DEFAULT_REPO_LOCATION;
+
+  static {
+    DEFAULT_REPO_LOCATION = System.getProperty("repo");
+
+    if (!StringUtils.hasText(DEFAULT_REPO_LOCATION))
+      DEFAULT_REPO_LOCATION = "classpath:repo-defaults.yml";
+  }
 
   final Map<String, Object> defaults = new HashMap<>();
   final ServiceLoader<ConfigSourceFactory> streamSourceLoader;
   final Map<String, ConfigSource> reposByName = new HashMap<>();
   final Map<String, StreamSource> typedSources = new HashMap<>();
   LinkedHashMap<String, Object> repos;
+
+  public ConfigSourceResolver() {
+    this(DEFAULT_REPO_LOCATION);
+  }
 
   public ConfigSourceResolver(String repoDefPath) {
 
