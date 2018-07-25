@@ -3,9 +3,24 @@ jobs:
   build-components:
     docker:
     - image: circleci/openjdk:8-jdk
+    environment:
+      CC_TEST_REPORTER_ID: 622268c8a0711a70aa888d325b8a281757b501b7043391033b4be4b006669c92
     steps:
     - checkout
-    - run: mvn clean install -B -DskipTests
+    - run:
+        name: Setup Code Climate test-reporter
+        command: |
+          curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+          chmod +x ./cc-test-reporter
+          ./cc-test-reporter before-build
+    - run: mvn clean install -B -s .circleci/settings.xml
+    - run:
+        name: Upload Code Climate test-reporter
+        command: |
+          cd ~/project/src/main/java
+          ~/project/./cc-test-reporter format-coverage -d -t jacoco ~/project/target/site/jacoco/jacoco.xml -o ~/project/target/coverage/codeclimate.json
+          cd ~/project
+          ./cc-test-reporter upload-coverage -d -i ~/project/target/coverage/codeclimate.json
     - save_cache:
         key: configrd-client-{{ .Branch }}-{{ checksum "pom.xml" }}-{{ .Environment.CIRCLE_SHA1 }}
         paths:
@@ -21,19 +36,7 @@ jobs:
     - restore_cache:
         keys:
         - configrd-client-{{ .Branch }}-{{ checksum "pom.xml" }}-{{.Environment.CIRCLE_SHA1}}
-    - run: mvn jar:jar deploy:deploy -B -DskipTests -Dtickerstorm-releases.username=$JFROG_USER -Dtickerstorm-releases.password=$JFROG_PASS
-    - store_artifacts:
-        path: target
-  integration-test:
-    docker:
-    - image: circleci/openjdk:8-jdk
-    steps:
-    - checkout
-    - restore_cache:
-        key: configrd-client-{{ .Branch }}-{{ checksum "pom.xml" }}-{{ .Environment.CIRCLE_SHA1 }}
-    - run: mvn integration-test verify -B
-    - store_test_results:
-        path: target/failsafe-reports
+    - run: mvn jar:jar deploy:deploy -B -DskipTests  -s .circleci/settings.xml
     - store_artifacts:
         path: target
 
