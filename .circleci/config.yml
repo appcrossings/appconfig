@@ -21,7 +21,7 @@ jobs:
     - restore_cache:
         keys:
         - configrd-client-{{ .Branch }}-{{ checksum "pom.xml" }}-{{.Environment.CIRCLE_SHA1}}
-    - run: mvn jar:jar deploy:deploy -B -DskipTests -Dtickerstorm-releases.username=${JFROG_USER} -Dtickerstorm-releases.password=${JFROG_PASS}
+    - run: mvn jar:jar deploy:deploy -B -DskipTests -Dtickerstorm-release.username=${JFROG_USER} -Dtickerstorm-release.password=${JFROG_PASS}
     - store_artifacts:
         path: target
   integration-test:
