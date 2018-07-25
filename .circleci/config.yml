@@ -41,10 +41,10 @@ workflows:
   version: 2
   build_push:
     jobs:
-    - build-components:   
+    - build-components
     - integration-test:
-          requires:
-            - build-components
+        requires:
+        - build-components
     - deploy-components:
-          requires:
-            - integration-tests
+        requires:
+        - integration-tests
