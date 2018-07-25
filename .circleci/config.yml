@@ -1,5 +1,4 @@
-version: 2.0
-
+version: 2
 jobs:
   build-components:
     docker:
@@ -8,7 +7,7 @@ jobs:
     - checkout
     - run: mvn clean install -B -DskipTests
     - save_cache:
-        key: {{ .Branch }}-{{ checksum "pom.xml" }}-{{ .Environment.CIRCLE_SHA1 }}
+        key: configrd-client-{{ .Branch }}-{{ checksum "pom.xml" }}-{{ .Environment.CIRCLE_SHA1 }}
         paths:
         - target
         - ~/.m2
@@ -21,7 +20,7 @@ jobs:
     - checkout
     - restore_cache:
         keys:
-        - {{ .Branch }}-{{ checksum "pom.xml" }}-{{.Environment.CIRCLE_SHA1}}
+        - configrd-client-{{ .Branch }}-{{ checksum "pom.xml" }}-{{.Environment.CIRCLE_SHA1}}
     - run: mvn jar:jar deploy:deploy -B -DskipTests
     - store_artifacts:
         path: target
@@ -31,7 +30,7 @@ jobs:
     steps:
     - checkout
     - restore_cache:
-        key: {{ .Branch }}-{{ checksum "pom.xml" }}-{{ .Environment.CIRCLE_SHA1 }}
+        key: configrd-client-{{ .Branch }}-{{ checksum "pom.xml" }}-{{ .Environment.CIRCLE_SHA1 }}
     - run: mvn integration-test verify -B
     - store_test_results:
         path: target/failsafe-reports
