@@ -45,9 +45,6 @@ workflows:
     build-push:
       jobs:
       - build-components
-      - integration-test:
-          requires:
-          - build-components
       - deploy-components:
           requires:
-          - integration-test
+          - build-components
