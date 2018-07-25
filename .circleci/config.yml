@@ -36,6 +36,7 @@ jobs:
         path: target/failsafe-reports
     - store_artifacts:
         path: target
+        
 workflows:
     version: 2
     build-push:
