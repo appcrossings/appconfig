@@ -8,7 +8,7 @@ import org.junit.Test;
 import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.source.ConfigSourceFactory;
 import com.appcrossings.config.source.FileBasedRepo;
-import com.beust.jcommander.internal.Maps;
+import com.google.common.base.Splitter;
 
 public class TestGetRawPropertiesFile {
 
@@ -23,8 +23,9 @@ public class TestGetRawPropertiesFile {
     defaults.put(FileBasedRepo.FILE_NAME_FIELD, "default.properties");
     defaults.put(FileBasedRepo.HOSTS_FILE_NAME_FIELD, "hosts.properties");
 
-    source = csf.newConfigSource("TestGetRawPropertiesFile", (Map) Maps.newHashMap("uri", host),
-        defaults);
+    source =
+        csf.newConfigSource("TestGetRawPropertiesFile", (Map) Splitter.on(",").omitEmptyStrings()
+            .trimResults().withKeyValueSeparator("=").split("uri=" + host), defaults);
 
   }
 

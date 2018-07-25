@@ -1,7 +1,6 @@
 package com.appcrossings.config.file;
 
 import java.util.Map;
-import java.util.Properties;
 import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -13,7 +12,8 @@ import org.junit.rules.TemporaryFolder;
 import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.source.ConfigSourceFactory;
 import com.appcrossings.config.source.FileBasedRepo;
-import com.beust.jcommander.internal.Maps;
+import com.google.common.base.Splitter;
+
 
 public class TestFileConfigSource {
 
@@ -46,8 +46,9 @@ public class TestFileConfigSource {
   @Test
   public void loadClasspathProperties() throws Exception {
 
-    source = source = factory.newConfigSource("TestFileConfigSource",
-        (Map) Maps.newHashMap("uri", "classpath:/"), defaults);
+    source = source =
+        factory.newConfigSource("TestFileConfigSource", (Map) Splitter.on(",").omitEmptyStrings()
+            .trimResults().withKeyValueSeparator("=").split("uri=classpath:/"), defaults);
 
     Map<String, Object> p = source.get("env/dev/default.properties");
     Assert.assertNotNull(p);
@@ -55,14 +56,15 @@ public class TestFileConfigSource {
     Assert.assertEquals(p.get("property.1.name"), "value1");
 
   }
-  
+
   @Test
   public void loadAppendDefaultFileName() throws Exception {
 
-    source = source = factory.newConfigSource("TestFileConfigSource",
-        (Map) Maps.newHashMap("uri", "classpath:/"), defaults);
+    source = source =
+        factory.newConfigSource("TestFileConfigSource", (Map) Splitter.on(",").omitEmptyStrings()
+            .trimResults().withKeyValueSeparator("=").split("uri=classpath:/"), defaults);
 
-    Map<String, Object>  p = source.get("env/dev/");
+    Map<String, Object> p = source.get("env/dev/");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.get("property.1.name"), "value1");
@@ -72,10 +74,11 @@ public class TestFileConfigSource {
   @Test
   public void loadFileProperties() throws Exception {
 
-    source = source = factory.newConfigSource("TestFileConfigSource",
-        (Map) Maps.newHashMap("uri", "file:" + folder.getRoot()), defaults);
+    source = source =
+        factory.newConfigSource("TestFileConfigSource", (Map) Splitter.on(",").omitEmptyStrings()
+            .trimResults().withKeyValueSeparator("=").split("uri=file:" + folder.getRoot()), defaults);
 
-    Map<String, Object>  p = source.get("/env/dev/default.properties");
+    Map<String, Object> p = source.get("/env/dev/default.properties");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.get("property.1.name"), "value1");
@@ -85,10 +88,11 @@ public class TestFileConfigSource {
   @Test(expected = IllegalArgumentException.class)
   public void loadClasspathRelativePath() throws Exception {
 
-    source = source = factory.newConfigSource("TestFileConfigSource",
-        (Map) Maps.newHashMap("uri", "/env/dev/"), defaults);
+    source = source =
+        factory.newConfigSource("TestFileConfigSource", (Map) Splitter.on(",").omitEmptyStrings()
+            .trimResults().withKeyValueSeparator("=").split("uri=/env/dev/"), defaults);
 
-    Map<String, Object>  p = source.get("/");
+    Map<String, Object> p = source.get("/");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.get("property.1.name"), "value1");
@@ -98,10 +102,11 @@ public class TestFileConfigSource {
   @Test
   public void testLoadHosts() throws Exception {
 
-    source = source = factory.newConfigSource("TestFileConfigSource",
-        (Map) Maps.newHashMap("uri", "classpath:/"), defaults);
+    source = source =
+        factory.newConfigSource("TestFileConfigSource", (Map) Splitter.on(",").omitEmptyStrings()
+            .trimResults().withKeyValueSeparator("=").split("uri=classpath:/"), defaults);
 
-    Map<String, Object>  p = source.getRaw("env/hosts.properties");
+    Map<String, Object> p = source.getRaw("env/hosts.properties");
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("michelangello"));
     Assert.assertEquals(p.get("michelangello"), "classpath:/env/dev/");
