@@ -4,12 +4,12 @@
                           https://maven.apache.org/xsd/settings-1.0.0.xsd">
 	<servers>
 		<server>
-			<id>releases</id>
+			<id>tickerstorm-releases</id>
 			<username>${JFROG_USER}</username>
 			<password>${JFROG_PASSWORD}</password>
 		</server>
 		<server>
-			<id>snapshots</id>
+			<id>tickerstorm-snapshots</id>
 			<username>${JFROG_USER}</username>
 			<password>${JFROG_PASSWORD}</password>
 		</server>
