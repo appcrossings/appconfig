@@ -34,6 +34,6 @@ public interface WritableConfigSource {
    * @param value Value being storied
    * @return True if operation succeeds
    */
-  public boolean patch(String path, String etag, String key, Object value);
+  public boolean patch(String path, String etag, Map<String, Object> props);
 
 }
