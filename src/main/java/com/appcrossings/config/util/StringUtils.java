@@ -1,7 +1,7 @@
 package com.appcrossings.config.util;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.beanutils.ConvertUtilsBean;
 import org.apache.commons.lang3.text.StrSubstitutor;
 
@@ -17,20 +17,22 @@ public class StringUtils {
     return (string != null && !string.trim().equals(""));
   }
 
-  private final ConvertUtilsBean bean = new ConvertUtilsBean();
+  private static final ConvertUtilsBean bean = new ConvertUtilsBean();
 
   protected boolean ignoreUnresolvablePlaceholders = false;
 
-  protected AtomicReference<StrSubstitutor> sub = new AtomicReference<>(new StrSubstitutor());
+  protected final StrSubstitutor sub;
+  protected final Map<String, Object> mapped;
 
   public StringUtils(Map<String, Object> vals) {
 
-    sub.set(new StrSubstitutor(vals));
-    sub.get().setVariablePrefix(DEFAULT_PLACEHOLDER_PREFIX);
-    sub.get().setVariableSuffix(DEFAULT_PLACEHOLDER_SUFFIX);
+    sub = new StrSubstitutor(vals);
+    sub.setVariablePrefix(DEFAULT_PLACEHOLDER_PREFIX);
+    sub.setVariableSuffix(DEFAULT_PLACEHOLDER_SUFFIX);
+    this.mapped = fillAll(vals);
   }
 
-  public <T> T cast(String property, Class<T> clazz) {
+  public static <T> T cast(String property, Class<T> clazz) {
     if (clazz.equals(String.class))
       return (T) property;
     else if (property != null)
@@ -42,10 +44,25 @@ public class StringUtils {
   public String fill(String value) {
 
     if (value.contains(DEFAULT_PLACEHOLDER_PREFIX))
-      value = sub.get().replace(value);
-
+      value = sub.replace(value);
 
     return value;
+  }
+
+  public Map<String, Object> filled() {
+    return this.mapped;
+  }
+
+  protected Map<String, Object> fillAll(Map<String, Object> vals) {
+
+    Map<String, Object> filled = new HashMap<>();
+
+    vals.entrySet().stream().forEach(e -> {
+      filled.put(e.getKey(), fill((String) e.getValue()));
+    });
+
+    return filled;
+
   }
 
 }

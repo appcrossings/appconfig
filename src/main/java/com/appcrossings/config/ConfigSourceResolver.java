@@ -30,9 +30,10 @@ public class ConfigSourceResolver {
 
   public final static String DEFAULT_REPO_NAME = "default";
   public static String DEFAULT_REPO_LOCATION;
+  public static final String CONFIGRD_SYSTEM_PROPERTY = "repo";
 
   static {
-    DEFAULT_REPO_LOCATION = System.getProperty("repo");
+    DEFAULT_REPO_LOCATION = System.getProperty(CONFIGRD_SYSTEM_PROPERTY);
 
     if (!StringUtils.hasText(DEFAULT_REPO_LOCATION))
       DEFAULT_REPO_LOCATION = "classpath:repo-defaults.yml";
@@ -57,6 +58,9 @@ public class ConfigSourceResolver {
           + DEFAULT_REPO_LOCATION);
       repoDefPath = DEFAULT_REPO_LOCATION;
     }
+
+    logger.info("Loading configrd configuration file from " + repoDefPath);
+
 
     LinkedHashMap<String, Object> y = loadRepoDefFile(URI.create(repoDefPath));
     loadRepoConfig(y);

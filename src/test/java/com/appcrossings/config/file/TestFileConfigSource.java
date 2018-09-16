@@ -1,7 +1,7 @@
 package com.appcrossings.config.file;
 
+import java.util.HashMap;
 import java.util.Map;
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -28,11 +28,11 @@ public class TestFileConfigSource {
   @Before
   public void before() throws Exception {
     folder.create();
-    System.out.println("from: " + FileUtils.toFile(this.getClass().getResource("/env")));
+    System.out.println("from: " + FileUtils.toFile(this.getClass().getResource("/")));
     System.out.println("to: " + folder.getRoot().toPath());
     FileUtils.copyDirectory(FileUtils.toFile(this.getClass().getResource("/")), folder.getRoot());
 
-    defaults = new HashedMap();
+    defaults = new HashMap<>();
     defaults.put(FileBasedRepo.FILE_NAME_FIELD, "default.properties");
     defaults.put(FileBasedRepo.HOSTS_FILE_NAME_FIELD, "hosts.properties");
 
@@ -74,9 +74,13 @@ public class TestFileConfigSource {
   @Test
   public void loadFileProperties() throws Exception {
 
-    source = source =
-        factory.newConfigSource("TestFileConfigSource", (Map) Splitter.on(",").omitEmptyStrings()
-            .trimResults().withKeyValueSeparator("=").split("uri=file:" + folder.getRoot()), defaults);
+    source =
+        source =
+            factory
+                .newConfigSource("TestFileConfigSource",
+                    (Map) Splitter.on(",").omitEmptyStrings().trimResults()
+                        .withKeyValueSeparator("=").split("uri=file:" + folder.getRoot()),
+                    defaults);
 
     Map<String, Object> p = source.get("/env/dev/default.properties");
     Assert.assertNotNull(p);

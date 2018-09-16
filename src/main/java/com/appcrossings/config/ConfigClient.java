@@ -16,6 +16,7 @@ import com.appcrossings.config.discovery.ConfigDiscoveryStrategy;
 import com.appcrossings.config.discovery.DefaultMergeStrategy;
 import com.appcrossings.config.discovery.HostsFileDiscoveryStrategy;
 import com.appcrossings.config.exception.InitializationException;
+import com.appcrossings.config.processor.PropertiesProcessor;
 import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.util.CfgrdURI;
 import com.appcrossings.config.util.StringUtils;
@@ -87,8 +88,6 @@ public class ConfigClient implements Config {
 
   protected final URI startLocation;
 
-  protected StringUtils strings;
-
   private AtomicReference<Timer> timer = new AtomicReference<Timer>();
 
   protected Integer timerTTL = 0;
@@ -142,7 +141,7 @@ public class ConfigClient implements Config {
     String value = loadedProperties.get().getProperty(key);
 
     if (StringUtils.hasText(value)) {
-      return strings.cast(value, clazz);
+      return StringUtils.cast(value, clazz);
     }
 
     return null;
@@ -223,14 +222,6 @@ public class ConfigClient implements Config {
 
       Map<String, Object> p = configSource.get().get(path, names);
 
-      // TODO: Enable encryption
-      // if (encryptor != null) {
-      // Properties ps = new Properties();
-      // ps.putAll(p);
-      // ps = new EncryptableProperties(ps, encryptor);
-      // p.putAll(ps);
-      // }
-
       if (p.isEmpty()) {
         logger.warn("Config location " + startPath.get()
             + " return an empty set of properties. Please check the location");
@@ -250,7 +241,6 @@ public class ConfigClient implements Config {
 
     merge.addConfig((Map) environment.getEnvironment());
     Map<String, Object> merged = merge.merge();
-    strings = new StringUtils(merged);
 
     if (merged.isEmpty()) {
       logger.warn("Properties collection returned empty per search location " + this.startLocation
@@ -258,12 +248,8 @@ public class ConfigClient implements Config {
           + ". If this is unexpected, please check your configuration.");
     } else {
 
-      for (Object key : merged.keySet()) {
+      loadedProperties.set(PropertiesProcessor.asProperties(new StringUtils(merged).filled()));
 
-        String value = (String) merged.get(key);
-        loadedProperties.get().put(key, strings.fill(value));
-
-      }
     }
 
     logger.info("ConfigClient initialized.");
