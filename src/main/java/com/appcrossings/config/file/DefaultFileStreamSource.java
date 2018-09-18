@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,9 +67,10 @@ public class DefaultFileStreamSource implements StreamSource, AdHocStreamSource 
 
         if (is != null) {
           p = new StreamPacket(uri, is);
-          p.putAll(ProcessorSelector.process(uri.toString(), p.bytes()));
+          Map<String, Object> vals = ProcessorSelector.process(uri.toString(), p.bytes());
+          p.putAll(vals);
         }
-        
+
       } catch (IOException e) {
         log.debug(e.getMessage(), e);
         // nothing else

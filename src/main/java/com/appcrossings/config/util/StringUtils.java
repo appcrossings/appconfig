@@ -41,12 +41,14 @@ public class StringUtils {
       return null;
   }
 
-  public String fill(String value) {
+  public String fill(final Object value) {
 
-    if (value.contains(DEFAULT_PLACEHOLDER_PREFIX))
-      value = sub.replace(value);
+    String v = String.valueOf(value);
 
-    return value;
+    if (v.contains(DEFAULT_PLACEHOLDER_PREFIX))
+      v = sub.replace(v);
+
+    return v;
   }
 
   public Map<String, Object> filled() {
@@ -58,7 +60,7 @@ public class StringUtils {
     Map<String, Object> filled = new HashMap<>();
 
     vals.entrySet().stream().forEach(e -> {
-      filled.put(e.getKey(), fill((String) e.getValue()));
+      filled.put(e.getKey(), fill(e.getValue()));
     });
 
     return filled;

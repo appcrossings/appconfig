@@ -9,6 +9,7 @@ import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.source.ConfigSourceFactory;
 import com.appcrossings.config.source.FileBasedRepo;
 import com.google.common.base.Splitter;
+import com.google.common.collect.Sets;
 
 public class TestGetRawPropertiesFile {
 
@@ -52,7 +53,7 @@ public class TestGetRawPropertiesFile {
   @Test
   public void testTraverseHttp() throws Exception {
 
-    Map<String, Object> p = source.get("/env/dev/default.properties");
+    Map<String, Object> p = source.get("/env/dev/default.properties", Sets.newHashSet());
 
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));

@@ -13,6 +13,7 @@ import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.source.ConfigSourceFactory;
 import com.appcrossings.config.source.FileBasedRepo;
 import com.google.common.base.Splitter;
+import com.google.common.collect.Sets;
 
 
 public class TestFileConfigSource {
@@ -50,7 +51,7 @@ public class TestFileConfigSource {
         factory.newConfigSource("TestFileConfigSource", (Map) Splitter.on(",").omitEmptyStrings()
             .trimResults().withKeyValueSeparator("=").split("uri=classpath:/"), defaults);
 
-    Map<String, Object> p = source.get("env/dev/default.properties");
+    Map<String, Object> p = source.get("env/dev/default.properties", Sets.newHashSet());
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.get("property.1.name"), "value1");
@@ -64,7 +65,7 @@ public class TestFileConfigSource {
         factory.newConfigSource("TestFileConfigSource", (Map) Splitter.on(",").omitEmptyStrings()
             .trimResults().withKeyValueSeparator("=").split("uri=classpath:/"), defaults);
 
-    Map<String, Object> p = source.get("env/dev/");
+    Map<String, Object> p = source.get("env/dev/", Sets.newHashSet());
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.get("property.1.name"), "value1");
@@ -82,7 +83,7 @@ public class TestFileConfigSource {
                         .withKeyValueSeparator("=").split("uri=file:" + folder.getRoot()),
                     defaults);
 
-    Map<String, Object> p = source.get("/env/dev/default.properties");
+    Map<String, Object> p = source.get("/env/dev/default.properties", Sets.newHashSet());
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.get("property.1.name"), "value1");
@@ -96,7 +97,7 @@ public class TestFileConfigSource {
         factory.newConfigSource("TestFileConfigSource", (Map) Splitter.on(",").omitEmptyStrings()
             .trimResults().withKeyValueSeparator("=").split("uri=/env/dev/"), defaults);
 
-    Map<String, Object> p = source.get("/");
+    Map<String, Object> p = source.get("/", Sets.newHashSet());
     Assert.assertNotNull(p);
     Assert.assertTrue(p.containsKey("property.1.name"));
     Assert.assertEquals(p.get("property.1.name"), "value1");

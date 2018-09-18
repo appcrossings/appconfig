@@ -2,6 +2,7 @@ package com.appcrossings.config;
 
 import java.net.URI;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
@@ -218,9 +219,8 @@ public class ConfigClient implements Config {
     if (configSource.isPresent()) {
 
       final String path = UriUtil.getPath(startPath.get());
-      final String[] names = UriUtil.getFragments(startPath.get());
 
-      Map<String, Object> p = configSource.get().get(path, names);
+      Map<String, Object> p = configSource.get().get(path, new HashSet<String>());
 
       if (p.isEmpty()) {
         logger.warn("Config location " + startPath.get()

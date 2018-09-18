@@ -2,6 +2,7 @@ package com.appcrossings.config;
 
 import java.util.Properties;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import com.appcrossings.config.ConfigClient.Method;
 import com.appcrossings.config.exception.InitializationException;
@@ -53,6 +54,7 @@ public class TestConfigClientWithConfigrdURI {
     Assert.assertTrue(props.containsKey("log.root.level"));
   }
   
+  @Ignore
   @Test
   public void testGetPropsFromNamedPath() throws Exception {
 
@@ -73,6 +75,7 @@ public class TestConfigClientWithConfigrdURI {
     Assert.assertTrue(props.containsKey("log.root.level"));
   }
   
+  @Ignore
   @Test
   public void testGetPropsFromNamedPaths() throws Exception {
 
