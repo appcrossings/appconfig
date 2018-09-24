@@ -43,6 +43,17 @@ public class PropertiesProcessor {
     }
   }
 
+  public static Map<String, Object> toMap(Properties props) {
+
+    Map<String, Object> hash = new HashMap<>();
+    props.entrySet().stream().forEach(e -> {
+      hash.put((String) e.getKey(), e.getValue());
+    });
+
+    return hash;
+
+  }
+
   public static Map<String, Object> asProperties(byte[] stream) {
 
     Map<String, Object> props = new HashMap<>();
