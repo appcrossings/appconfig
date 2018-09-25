@@ -3,9 +3,17 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>appconfig-client</artifactId>
-	<name>Hierarchical Application Config</name>
+	<name>Configrd Java Configuration Client</name>
 	<description>A property placeholder configurer compatible with Spring and allowing hierarchical configurations to be externalized from the application and loaded by URL</description>
 	<url>https://github.com/appcrossings/appconfig-client</url>
+	<developers>
+		<developer>
+			<email>kkarski@appcrossings.com</email>
+			<name>Krysztof Karski</name>
+			<organization>Configrd</organization>
+			<organizationUrl>http://www.configrd.io</organizationUrl>
+		</developer>
+	</developers>
 	<scm>
 		<url>https://github.com/appcrossings/appconfig-client</url>
 		<connection>scm:git:https://github.com/appcrossings/appconfig-client</connection>
@@ -30,6 +38,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>3.0.0</version>
 						<executions>
 							<execution>
 								<goals>
@@ -178,7 +187,7 @@
 			<dependency>
 				<groupId>io.spring.platform</groupId>
 				<artifactId>platform-bom</artifactId>
-				<version>Brussels-SR10</version>
+				<version>Cairo-SR4</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
@@ -291,4 +300,8 @@
 	</repositories>
 	<version>2.0.0</version>
 	<groupId>com.appcrossings.config</groupId>
+	<organization>
+		<name>Krzysztof Karski</name>
+		<url>http://www.configrd.io</url>
+	</organization>
 </project>
