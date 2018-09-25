@@ -15,6 +15,7 @@ import java.util.stream.StreamSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
+import com.appcrossings.config.file.FileRepoDef;
 import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.source.ConfigSourceFactory;
 import com.appcrossings.config.source.PropertyPacket;
@@ -50,6 +51,9 @@ public class ConfigSourceResolver {
   }
 
   public ConfigSourceResolver(String repoDefPath) {
+
+    defaults.put(FileRepoDef.HOSTS_FILE_NAME_FIELD, "hosts.properties");
+    defaults.put(FileRepoDef.FILE_NAME_FIELD, "defaults.properties");
 
     streamSourceLoader = ServiceLoader.load(ConfigSourceFactory.class);
 
