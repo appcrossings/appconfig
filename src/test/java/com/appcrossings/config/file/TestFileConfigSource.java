@@ -31,7 +31,7 @@ public class TestFileConfigSource {
     folder.create();
     System.out.println("from: " + FileUtils.toFile(this.getClass().getResource("/")));
     System.out.println("to: " + folder.getRoot().toPath());
-    FileUtils.copyDirectory(FileUtils.toFile(this.getClass().getResource("/")), folder.getRoot());
+    FileUtils.copyDirectory(FileUtils.toFile(getClass().getResource("/")), folder.getRoot());
 
     defaults = new HashMap<>();
     defaults.put(FileBasedRepo.FILE_NAME_FIELD, "default.properties");
