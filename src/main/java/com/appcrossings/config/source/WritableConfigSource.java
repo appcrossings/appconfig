@@ -24,7 +24,8 @@ public interface WritableConfigSource {
    * Updates the given property's value in the store. If the property doesn't exist, it will be
    * created. If it already exists, it's value will be updated to the new provided value. The etag
    * value serves as an optimistic lock. If the etag doesn't match, the update operation will fail
-   * assuming underlying value has changed since read. To force an update, pass an empty etag.
+   * assuming underlying value has changed since read. To force an update, pass an empty etag which essentially
+   * renders the method a put.
    * 
    * @param path path to the property being updated. Must be in format
    *        "my/property/path#property.name

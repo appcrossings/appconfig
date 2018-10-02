@@ -22,7 +22,7 @@ public class TestUriUtil {
     Assert.assertEquals("file.properties",
         UriUtil
             .getFileName(
-                URI.create("file://userName:passWord@host/first/second/third/file.properties"))
+                URI.create("file://username:password@host/first/second/third/file.properties"))
             .get());
 
     Assert.assertEquals("file.properties",
@@ -47,7 +47,7 @@ public class TestUriUtil {
   public void testGetDirSegments() {
 
     Assert.assertEquals(new String[] {"first", "second", "third"}, UriUtil.getDirSegements(
-        URI.create("file://userName:passWord@host/first/second/third/file.proeprties")));
+        URI.create("file://username:password@host/first/second/third/file.proeprties")));
 
     Assert.assertEquals(new String[] {"first", "second", "third"},
         UriUtil.getDirSegements(URI.create("file:first/second/third/file.proeprties")));

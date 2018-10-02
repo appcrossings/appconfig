@@ -50,7 +50,7 @@ public class DefaultFileStreamSource implements StreamSource, AdHocStreamSource 
         }
 
       } catch (FileNotFoundException e) {
-        log.debug(e.getMessage(), e);
+        log.debug(e.getMessage());
         // nothing else
       } catch (IOException e) {
 
@@ -72,7 +72,7 @@ public class DefaultFileStreamSource implements StreamSource, AdHocStreamSource 
         }
 
       } catch (IOException e) {
-        log.debug(e.getMessage(), e);
+        log.debug(e.getMessage());
         // nothing else
       }
 
@@ -82,8 +82,6 @@ public class DefaultFileStreamSource implements StreamSource, AdHocStreamSource 
 
     if (p != null) {
       log.info("Found " + uri.toString());
-    } else {
-      log.info("File not found at " + uri.toString());
     }
 
     return Optional.ofNullable(p);

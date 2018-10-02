@@ -18,9 +18,9 @@ public class HttpRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
 
   String hostsName;
 
-  String passWord;
+  String password;
 
-  String userName;
+  String username;
 
   /**
    * For testing convenience
@@ -54,7 +54,7 @@ public class HttpRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
 
   @Override
   public String getPassword() {
-    return passWord;
+    return password;
   }
 
   public String getUri() {
@@ -63,7 +63,7 @@ public class HttpRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
 
   @Override
   public String getUsername() {
-    return userName;
+    return username;
   }
 
   public void setFileName(String fileName) {
@@ -74,16 +74,16 @@ public class HttpRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
     this.hostsName = hostsName;
   }
 
-  public void setPassWord(String passWord) {
-    this.passWord = passWord;
+  public void setPassword(String passWord) {
+    this.password = passWord;
   }
 
   public void setUri(String uri) {
     this.uri = uri;
   }
 
-  public void setUserName(String userName) {
-    this.userName = userName;
+  public void setUsername(String userName) {
+    this.username = userName;
   }
 
   @Override

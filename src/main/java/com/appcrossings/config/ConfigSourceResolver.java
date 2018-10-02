@@ -30,15 +30,7 @@ public class ConfigSourceResolver {
   private final static Logger logger = LoggerFactory.getLogger(ConfigSourceResolver.class);
 
   public final static String DEFAULT_REPO_NAME = "default";
-  public static String DEFAULT_REPO_LOCATION;
-  public static final String CONFIGRD_SYSTEM_PROPERTY = "repo";
-
-  static {
-    DEFAULT_REPO_LOCATION = System.getProperty(CONFIGRD_SYSTEM_PROPERTY);
-
-    if (!StringUtils.hasText(DEFAULT_REPO_LOCATION))
-      DEFAULT_REPO_LOCATION = "classpath:repo-defaults.yml";
-  }
+  public static final String CONFIGRD_CONFIG = "configrd.config.location";
 
   final Map<String, Object> defaults = new HashMap<>();
   final ServiceLoader<ConfigSourceFactory> streamSourceLoader;
@@ -47,7 +39,7 @@ public class ConfigSourceResolver {
   LinkedHashMap<String, Object> repos;
 
   public ConfigSourceResolver() {
-    this(DEFAULT_REPO_LOCATION);
+    this(System.getProperty(CONFIGRD_CONFIG, "classpath:repo-defaults.yml"));
   }
 
   public ConfigSourceResolver(String repoDefPath) {
@@ -57,13 +49,11 @@ public class ConfigSourceResolver {
 
     streamSourceLoader = ServiceLoader.load(ConfigSourceFactory.class);
 
-    if (!StringUtils.hasText(repoDefPath)) {
-      logger.warn("No repo configuration file provided. Failing over to default at "
-          + DEFAULT_REPO_LOCATION);
-      repoDefPath = DEFAULT_REPO_LOCATION;
+    if (repoDefPath.equalsIgnoreCase("classpath:repo-defaults.yml")) {
+      logger.warn("Loading default configrd configuration file at " + repoDefPath);
+    } else {
+      logger.info("Loading configrd configuration file from " + repoDefPath);
     }
-
-    logger.info("Loading configrd configuration file from " + repoDefPath);
 
 
     LinkedHashMap<String, Object> y = loadRepoDefFile(URI.create(repoDefPath));
@@ -144,8 +134,8 @@ public class ConfigSourceResolver {
       }
 
       Optional<ConfigSourceFactory> factory = Optional.empty();
-      if (repo.containsKey("streamSource")) {
-        factory = resolveFactorySourceName((String) repo.get("streamSource"));
+      if (repo.containsKey(RepoDef.STREAM_SOURCE_FIELD)) {
+        factory = resolveFactorySourceName((String) repo.get(RepoDef.STREAM_SOURCE_FIELD));
       }
 
       if (!factory.isPresent()) {
@@ -198,6 +188,10 @@ public class ConfigSourceResolver {
   }
 
   public Optional<ConfigSource> findByRepoName(String repoName) {
+
+    if (!StringUtils.hasText(repoName))
+      repoName = ConfigSourceResolver.DEFAULT_REPO_NAME;
+
     return Optional.ofNullable(reposByName.get(repoName.toLowerCase()));
   }
 
