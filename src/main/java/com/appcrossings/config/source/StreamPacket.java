@@ -11,17 +11,16 @@ import com.appcrossings.config.util.UriUtil;
 import eu.medsea.mimeutil.MimeType;
 import eu.medsea.mimeutil.MimeUtil2;
 
-public class StreamPacket {
+@SuppressWarnings("serial")
+public class StreamPacket extends PropertyPacket {
 
   private final static MimeUtil2 mimes = new MimeUtil2();
   private byte[] bytes = new byte[0];
   private String contentType;
   private String encoding = "UTF-8";
-  private String eTag;
-  private final URI uri;
 
   public StreamPacket(URI uri, InputStream stream) throws FileNotFoundException {
-    this.uri = uri;
+    super(uri);
     readBytes(stream);
     detectMediaType();
 
@@ -39,7 +38,7 @@ public class StreamPacket {
 
   private void detectMediaType() {
 
-    String fileName = UriUtil.getFileName(uri).orElse(null);
+    String fileName = UriUtil.getFileName(getUri()).orElse(null);
 
     if (fileName != null) {
 
@@ -67,16 +66,8 @@ public class StreamPacket {
     return encoding;
   }
 
-  public String getETag() {
-    return eTag;
-  }
-
   public InputStream getInputStream() {
     return new ByteArrayInputStream(this.bytes);
-  }
-
-  public URI getUri() {
-    return uri;
   }
 
   public boolean hasContent() {
@@ -92,7 +83,7 @@ public class StreamPacket {
     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
     int nRead;
-    byte[] data = new byte[16384];
+    byte[] data = new byte[1024];
 
     try {
 
@@ -129,9 +120,5 @@ public class StreamPacket {
 
   public void setEncoding(String encoding) {
     this.encoding = encoding;
-  }
-
-  public void setETag(String eTag) {
-    this.eTag = eTag;
   }
 }

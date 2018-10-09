@@ -1,14 +1,12 @@
 package com.appcrossings.config.http;
 
-import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.appcrossings.config.processor.ProcessorSelector;
 import com.appcrossings.config.source.DefaultConfigSource;
-import com.appcrossings.config.source.StreamPacket;
+import com.appcrossings.config.source.PropertyPacket;
 import com.appcrossings.config.source.StreamSource;
 
 public class DefaultHttpConfigSource extends DefaultConfigSource {
@@ -20,16 +18,14 @@ public class DefaultHttpConfigSource extends DefaultConfigSource {
   }
 
   @Override
-  public Properties getRaw(String path) {
+  public Map<String, Object> getRaw(String path) {
 
-    Optional<StreamPacket> stream = streamSource.stream(path);
-    URI fullyQualifiedPath = streamSource.prototypeURI(path);
-    Properties p = new Properties();
+    Optional<PropertyPacket> stream = streamSource.stream(path);
 
-    if (stream.isPresent() && stream.get().hasContent())
-      p = ProcessorSelector.process(fullyQualifiedPath.toString(), stream.get().getInputStream());
+    if (!stream.isPresent())
+      return new HashMap<>();
 
-    return p;
+    return stream.get();
   }
 
   @Override

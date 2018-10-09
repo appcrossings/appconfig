@@ -11,6 +11,6 @@ public interface AdHocStreamSource {
    * @param uri
    * @return
    */
-  public Optional<StreamPacket> stream(URI uri);
+  public Optional<PropertyPacket> stream(URI uri);
 
 }

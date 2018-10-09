@@ -1,7 +1,7 @@
 package com.appcrossings.config.source;
 
 import java.util.Map;
-import java.util.Properties;
+import java.util.Set;
 import org.apache.commons.collections.map.HashedMap;
 import com.appcrossings.config.MergeStrategy;
 import com.appcrossings.config.discovery.DefaultMergeStrategy;
@@ -23,11 +23,11 @@ public abstract class DefaultConfigSource implements ConfigSource {
     }
   }
 
-  public Properties get(String path, String... names) {
+  public Map<String, Object> get(String path, Set<String> names) {
 
     final MergeStrategy merge = new DefaultMergeStrategy();
 
-    if (names.length > 0) {
+    if (!names.isEmpty()) {
 
       for (String name : names) {
 
@@ -40,7 +40,7 @@ public abstract class DefaultConfigSource implements ConfigSource {
 
         do {
 
-          Properties props = getRaw(traverse.decend().toString());
+          Map<String, Object> props = getRaw(traverse.decend().toString());
           merge.addConfig(props);
 
         } while (traverse.hasNextDown());
@@ -53,7 +53,7 @@ public abstract class DefaultConfigSource implements ConfigSource {
 
       do {
 
-        Properties props = getRaw(traverse.decend().toString());
+        Map<String, Object> props = getRaw(traverse.decend().toString());
         merge.addConfig(props);
 
       } while (traverse.hasNextDown());

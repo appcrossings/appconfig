@@ -3,9 +3,9 @@ package com.appcrossings.config.processor;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import com.appcrossings.config.util.StringUtils;
 import com.jsoniter.JsonIterator;
 import com.jsoniter.ValueType;
@@ -13,9 +13,9 @@ import com.jsoniter.any.Any;
 
 public class JsonProcessor {
 
-  public static Properties asProperties(InputStream stream) {
+  public static Map<String, Object> asProperties(InputStream stream) {
 
-    Properties props = new Properties();
+    Map<String, Object> props = new HashMap<>();
 
     try {
 
@@ -47,6 +47,22 @@ public class JsonProcessor {
     return props;
   }
 
+  public static Map<String, Object> asProperties(byte[] bytes) {
+
+    Map<String, Object> props = new HashMap<>();
+
+    Any body = JsonIterator.deserialize(bytes);
+    StringBuilder builder = new StringBuilder();
+
+    if (body.valueType().equals(ValueType.OBJECT)) {
+      recurse(body.asMap(), builder, props);
+    } else if (body.valueType().equals(ValueType.ARRAY)) {
+      recurse(body.asList(), builder, props);
+    }
+
+    return props;
+  }
+
 
   public static boolean isJsonFile(String path) {
 
@@ -54,7 +70,7 @@ public class JsonProcessor {
     return path.toLowerCase().endsWith(".json");
   }
 
-  private static void recurse(List<Any> list, StringBuilder builder, Properties props) {
+  private static void recurse(List<Any> list, StringBuilder builder, Map<String, Object> props) {
 
     final String node = builder.toString();
 
@@ -83,7 +99,8 @@ public class JsonProcessor {
 
   }
 
-  private static void recurse(Map<String, Any> map, StringBuilder builder, Properties props) {
+  private static void recurse(Map<String, Any> map, StringBuilder builder,
+      Map<String, Object> props) {
 
     final String node = builder.toString();
 

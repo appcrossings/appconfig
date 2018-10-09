@@ -1,13 +1,13 @@
 package com.appcrossings.config;
 
-import java.util.Properties;
+import java.util.Map;
 
 public interface MergeStrategy {
 
-  public void addConfig(Properties props);
+  public void addConfig(Map<String, Object> props);
 
   public void clear();
 
-  public Properties merge();
+  public Map<String, Object> merge();
 
 }

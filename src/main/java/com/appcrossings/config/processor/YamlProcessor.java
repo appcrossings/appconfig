@@ -1,21 +1,34 @@
 package com.appcrossings.config.processor;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import org.yaml.snakeyaml.Yaml;
 import com.appcrossings.config.util.StringUtils;
 
 public class YamlProcessor {
 
-  public static Properties asProperties(InputStream stream) {
+  public static Map<String, Object> asProperties(InputStream stream) {
 
     Yaml yaml = new Yaml();
-    final Properties properties = new Properties();
+    final Map<String, Object> properties = new HashMap<>();
     LinkedHashMap<String, Object> map = (LinkedHashMap) yaml.load(stream);
+
+    StringBuilder builder = new StringBuilder();
+    recurse(map, builder, properties);
+
+    return properties;
+  }
+
+  public static Map<String, Object> asProperties(byte[] stream) {
+
+    Yaml yaml = new Yaml();
+    final Map<String, Object> properties = new HashMap<>();
+    LinkedHashMap<String, Object> map = (LinkedHashMap) yaml.load(new ByteArrayInputStream(stream));
 
     StringBuilder builder = new StringBuilder();
     recurse(map, builder, properties);
@@ -29,7 +42,7 @@ public class YamlProcessor {
     return (path.toLowerCase().endsWith(".yaml") || path.toLowerCase().endsWith(".yml"));
   }
 
-  private static void recurse(List<Object> list, StringBuilder builder, Properties props) {
+  private static void recurse(List<Object> list, StringBuilder builder, Map<String, Object> props) {
 
     final String node = builder.toString();
 
@@ -57,7 +70,8 @@ public class YamlProcessor {
 
   }
 
-  private static void recurse(Map<String, Object> map, StringBuilder builder, Properties props) {
+  private static void recurse(Map<String, Object> map, StringBuilder builder,
+      Map<String, Object> props) {
 
     final String node = builder.toString();
 
@@ -83,11 +97,17 @@ public class YamlProcessor {
 
         props.put(builder.toString(), i);
 
+      } else if (i instanceof Boolean) {
+        
+        props.put(builder.toString(), i);
+        
+      } else if (i instanceof Integer) {
+        
+        props.put(builder.toString(), i);
+        
       }
 
       builder = new StringBuilder(node);
     }
   }
-
-
 }

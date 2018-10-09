@@ -15,7 +15,7 @@ public interface StreamSource {
    * @param path
    * @return
    */
-  public Optional<StreamPacket> stream(String path);
+  public Optional<PropertyPacket> stream(String path);
 
   /**
    * A unique name for this config source type

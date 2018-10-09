@@ -1,6 +1,9 @@
 package com.appcrossings.config;
 
 import java.net.URI;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Timer;
@@ -8,13 +11,13 @@ import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
 import org.jasypt.encryption.pbe.config.EnvironmentStringPBEConfig;
-import org.jasypt.properties.EncryptableProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.appcrossings.config.discovery.ConfigDiscoveryStrategy;
 import com.appcrossings.config.discovery.DefaultMergeStrategy;
 import com.appcrossings.config.discovery.HostsFileDiscoveryStrategy;
 import com.appcrossings.config.exception.InitializationException;
+import com.appcrossings.config.processor.PropertiesProcessor;
 import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.util.CfgrdURI;
 import com.appcrossings.config.util.StringUtils;
@@ -86,8 +89,6 @@ public class ConfigClient implements Config {
 
   protected final URI startLocation;
 
-  protected StringUtils strings;
-
   private AtomicReference<Timer> timer = new AtomicReference<Timer>();
 
   protected Integer timerTTL = 0;
@@ -141,7 +142,7 @@ public class ConfigClient implements Config {
     String value = loadedProperties.get().getProperty(key);
 
     if (StringUtils.hasText(value)) {
-      return strings.cast(value, clazz);
+      return StringUtils.cast(value, clazz);
     }
 
     return null;
@@ -168,10 +169,10 @@ public class ConfigClient implements Config {
 
     if (this.method.equals(Method.ABSOLUTE_URI)) {
 
-      if(UriUtil.validate(startLocation).isAbsolute().invalid()) {
+      if (UriUtil.validate(startLocation).isAbsolute().invalid()) {
         throw new IllegalArgumentException("Uri must be an absolute URI to the config location.");
       }
-      
+
       startPath = Optional.of(this.startLocation);
 
     } else {
@@ -218,12 +219,8 @@ public class ConfigClient implements Config {
     if (configSource.isPresent()) {
 
       final String path = UriUtil.getPath(startPath.get());
-      final String[] names = UriUtil.getFragments(startPath.get());
 
-      Properties p = configSource.get().get(path, names);
-
-      if (encryptor != null)
-        p = new EncryptableProperties(p, encryptor);
+      Map<String, Object> p = configSource.get().get(path, new HashSet<String>());
 
       if (p.isEmpty()) {
         logger.warn("Config location " + startPath.get()
@@ -242,9 +239,8 @@ public class ConfigClient implements Config {
 
     }
 
-    merge.addConfig(environment.getProperties());
-    Properties merged = merge.merge();
-    strings = new StringUtils(merged);
+    merge.addConfig((Map) environment.getEnvironment());
+    Map<String, Object> merged = merge.merge();
 
     if (merged.isEmpty()) {
       logger.warn("Properties collection returned empty per search location " + this.startLocation
@@ -252,12 +248,8 @@ public class ConfigClient implements Config {
           + ". If this is unexpected, please check your configuration.");
     } else {
 
-      for (Object key : merged.keySet()) {
+      loadedProperties.set(PropertiesProcessor.asProperties(new StringUtils(merged).filled()));
 
-        String value = merged.getProperty((String) key);
-        loadedProperties.get().put(key, strings.fill(value));
-
-      }
     }
 
     logger.info("ConfigClient initialized.");
@@ -271,10 +263,7 @@ public class ConfigClient implements Config {
 
   protected Optional<URI> resolveConfigPathFromHostFile(URI hostFilePath) {
 
-    String environmentName = environment.detectEnvironment();
-    String hostName = environment.detectHostName();
-
-    Properties hosts = new Properties();
+    Map<String, Object> hosts = new HashMap<>();
     logger.info("Loading hosts file at " + startLocation);
     Optional<URI> startPath = Optional.empty();
 
@@ -284,7 +273,7 @@ public class ConfigClient implements Config {
       String path = UriUtil.getPath(hostFilePath);
 
       hosts = source.get().getRaw(path);
-      startPath = lookupStrategy.lookupConfigPath(hosts, environment.getProperties());
+      startPath = lookupStrategy.lookupConfigPath(hosts, (Map) environment.getEnvironment());
     }
 
     return startPath;

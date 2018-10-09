@@ -1,7 +1,8 @@
 package com.appcrossings.config.processor;
 
 import java.io.InputStream;
-import java.util.Properties;
+import java.util.HashMap;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,9 +10,9 @@ public class ProcessorSelector {
 
   private final static Logger log = LoggerFactory.getLogger(ProcessorSelector.class);
 
-  public static Properties process(String uri, InputStream stream) {
+  public static Map<String, Object> process(String uri, InputStream stream) {
 
-    Properties p = new Properties();
+    Map<String, Object> p = new HashMap<>();
 
     try {
 
@@ -40,6 +41,32 @@ public class ProcessorSelector {
       }
     }
 
+
+    return p;
+
+  }
+
+  public static Map<String, Object> process(String uri, byte[] bytes) {
+
+    Map<String, Object> p = new HashMap<>();
+
+    if (JsonProcessor.isJsonFile(uri)) {
+
+      p = JsonProcessor.asProperties(bytes);
+
+    } else if (YamlProcessor.isYamlFile(uri)) {
+
+      p = YamlProcessor.asProperties(bytes);
+
+    } else if (PropertiesProcessor.isPropertiesFile(uri)) {
+
+      p = PropertiesProcessor.asProperties(bytes);
+
+    } else {
+
+      log.warn("Unable to process file " + uri + ". No compatible file processor found.");
+
+    }
 
     return p;
 

@@ -3,12 +3,16 @@ package com.appcrossings.config.file;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.appcrossings.config.processor.ProcessorSelector;
 import com.appcrossings.config.source.AdHocStreamSource;
+import com.appcrossings.config.source.PropertyPacket;
 import com.appcrossings.config.source.RepoDef;
 import com.appcrossings.config.source.StreamPacket;
 import com.appcrossings.config.source.StreamSource;
@@ -28,7 +32,7 @@ public class DefaultFileStreamSource implements StreamSource, AdHocStreamSource 
   }
 
   @Override
-  public Optional<StreamPacket> stream(final URI uri) {
+  public Optional<PropertyPacket> stream(final URI uri) {
 
     StreamPacket p = null;
 
@@ -36,35 +40,48 @@ public class DefaultFileStreamSource implements StreamSource, AdHocStreamSource 
       throw new IllegalArgumentException("Uri " + uri + " is not valid");
     }
 
-    try {
+    if (uri.getScheme().equalsIgnoreCase("file")) {
 
-      if (uri.getScheme().equalsIgnoreCase("file")) {
+      try (InputStream is = new FileInputStream(new File(uri))) {
 
-        InputStream is = new FileInputStream(new File(uri));
-        p = new StreamPacket(uri, is);
+        if (is != null) {
+          p = new StreamPacket(uri, is);
+          p.putAll(ProcessorSelector.process(uri.toString(), p.bytes()));
+        }
 
-      } else if (uri.getScheme().equalsIgnoreCase("classpath")) {
+      } catch (FileNotFoundException e) {
+        log.debug(e.getMessage());
+        // nothing else
+      } catch (IOException e) {
 
-        String trimmed = uri.getSchemeSpecificPart();
-
-        if (!trimmed.startsWith(File.separator))
-          trimmed = File.separator + trimmed;
-
-        InputStream is = this.getClass().getResourceAsStream(trimmed);
-        p = new StreamPacket(uri, is);
-
-      } else {
-        throw new IllegalArgumentException("Incompatible stream uri " + uri);
       }
 
-      if (p.hasContent()) {
-        log.info("Found " + uri.toString());
-      } else {
-        log.info("File not found at " + uri.toString());
+    } else if (uri.getScheme().equalsIgnoreCase("classpath")) {
+
+      String trimmed = uri.getSchemeSpecificPart();
+
+      if (!trimmed.startsWith(File.separator))
+        trimmed = File.separator + trimmed;
+
+      try (InputStream is = this.getClass().getResourceAsStream(trimmed)) {
+
+        if (is != null) {
+          p = new StreamPacket(uri, is);
+          Map<String, Object> vals = ProcessorSelector.process(uri.toString(), p.bytes());
+          p.putAll(vals);
+        }
+
+      } catch (IOException e) {
+        log.debug(e.getMessage());
+        // nothing else
       }
-    } catch (FileNotFoundException e) {
-      log.debug(e.getMessage(), e);
-      // nothing else
+
+    } else {
+      throw new IllegalArgumentException("Incompatible stream uri " + uri);
+    }
+
+    if (p != null) {
+      log.info("Found " + uri.toString());
     }
 
     return Optional.ofNullable(p);
@@ -88,9 +105,9 @@ public class DefaultFileStreamSource implements StreamSource, AdHocStreamSource 
   }
 
   @Override
-  public Optional<StreamPacket> stream(String path) {
+  public Optional<PropertyPacket> stream(String path) {
 
-    Optional<StreamPacket> is = Optional.empty();
+    Optional<PropertyPacket> is = Optional.empty();
 
     if (builder != null) {
 

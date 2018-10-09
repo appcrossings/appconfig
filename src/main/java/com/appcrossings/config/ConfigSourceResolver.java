@@ -15,8 +15,10 @@ import java.util.stream.StreamSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
+import com.appcrossings.config.file.FileRepoDef;
 import com.appcrossings.config.source.ConfigSource;
 import com.appcrossings.config.source.ConfigSourceFactory;
+import com.appcrossings.config.source.PropertyPacket;
 import com.appcrossings.config.source.RepoDef;
 import com.appcrossings.config.source.StreamPacket;
 import com.appcrossings.config.source.StreamSource;
@@ -26,9 +28,9 @@ import com.appcrossings.config.util.UriUtil;
 public class ConfigSourceResolver {
 
   private final static Logger logger = LoggerFactory.getLogger(ConfigSourceResolver.class);
-  
+
   public final static String DEFAULT_REPO_NAME = "default";
-  public final static String DEFAULT_REPO_LOCATION = "classpath:repo-defaults.yml";
+  public static final String CONFIGRD_CONFIG = "configrd.config.location";
 
   final Map<String, Object> defaults = new HashMap<>();
   final ServiceLoader<ConfigSourceFactory> streamSourceLoader;
@@ -36,15 +38,23 @@ public class ConfigSourceResolver {
   final Map<String, StreamSource> typedSources = new HashMap<>();
   LinkedHashMap<String, Object> repos;
 
+  public ConfigSourceResolver() {
+    this(System.getProperty(CONFIGRD_CONFIG, "classpath:repo-defaults.yml"));
+  }
+
   public ConfigSourceResolver(String repoDefPath) {
+
+    defaults.put(FileRepoDef.HOSTS_FILE_NAME_FIELD, "hosts.properties");
+    defaults.put(FileRepoDef.FILE_NAME_FIELD, "defaults.properties");
 
     streamSourceLoader = ServiceLoader.load(ConfigSourceFactory.class);
 
-    if (!StringUtils.hasText(repoDefPath)) {
-      logger.warn(
-          "No repo configuration file provided. Failing over to default at " + DEFAULT_REPO_LOCATION);
-      repoDefPath = DEFAULT_REPO_LOCATION;
+    if (repoDefPath.equalsIgnoreCase("classpath:repo-defaults.yml")) {
+      logger.warn("Loading default configrd configuration file at " + repoDefPath);
+    } else {
+      logger.info("Loading configrd configuration file from " + repoDefPath);
     }
+
 
     LinkedHashMap<String, Object> y = loadRepoDefFile(URI.create(repoDefPath));
     loadRepoConfig(y);
@@ -62,9 +72,16 @@ public class ConfigSourceResolver {
         repos = (LinkedHashMap) service.get("repos");
         for (Entry<String, Object> entry : repos.entrySet()) {
 
-          Optional<ConfigSource> cs = buildConfigSource(entry);
-          if (cs.isPresent())
-            reposByName.put(cs.get().getName().toLowerCase(), cs.get());
+          try {
+
+            Optional<ConfigSource> cs = buildConfigSource(entry);
+            if (cs.isPresent())
+              reposByName.put(cs.get().getName().toLowerCase(), cs.get());
+
+          } catch (Exception e) {
+            logger.error(e.getMessage());
+            // allow to continue loading other repos
+          }
 
         }
       }
@@ -82,12 +99,12 @@ public class ConfigSourceResolver {
     if (cs.isPresent()) {
 
       String path = UriUtil.getPath(repoDefPath);
-      
-      Optional<StreamPacket> stream = cs.get().getStreamSource().stream(path);
 
-      if (stream.isPresent()) {
+      Optional<PropertyPacket> stream = cs.get().getStreamSource().stream(path);
 
-        try (InputStream s = stream.get().getInputStream()) {
+      if (stream.isPresent() && stream.get() instanceof StreamPacket) {
+
+        try (InputStream s = ((StreamPacket) stream.get()).getInputStream()) {
 
           Yaml yaml = new Yaml();
           LinkedHashMap<String, Object> y = (LinkedHashMap) yaml.load(s);
@@ -124,8 +141,8 @@ public class ConfigSourceResolver {
       }
 
       Optional<ConfigSourceFactory> factory = Optional.empty();
-      if (repo.containsKey("streamSource")) {
-        factory = resolveFactorySourceName((String) repo.get("streamSource"));
+      if (repo.containsKey(RepoDef.STREAM_SOURCE_FIELD)) {
+        factory = resolveFactorySourceName((String) repo.get(RepoDef.STREAM_SOURCE_FIELD));
       }
 
       if (!factory.isPresent()) {
@@ -168,7 +185,7 @@ public class ConfigSourceResolver {
     if (!sources.isEmpty()) {
       ConfigSourceFactory csf = sources.iterator().next();
       URI root = UriUtil.getRoot(uri);
-      
+
       Map<String, Object> values = new HashMap<>();
       values.put("uri", root.toString());
       source = Optional.of(csf.newConfigSource("adhoc", values, defaults));
@@ -178,6 +195,10 @@ public class ConfigSourceResolver {
   }
 
   public Optional<ConfigSource> findByRepoName(String repoName) {
+
+    if (!StringUtils.hasText(repoName))
+      repoName = ConfigSourceResolver.DEFAULT_REPO_NAME;
+
     return Optional.ofNullable(reposByName.get(repoName.toLowerCase()));
   }
 

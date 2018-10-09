@@ -14,8 +14,8 @@ public class FileRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
 
   String fileName;
   String hostsName;
-  String passWord;
-  String userName;
+  String password;
+  String username;
 
   /**
    * For testing purposes
@@ -52,28 +52,22 @@ public class FileRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
     this.hostsName = hostsName;
   }
 
-  public String getPassWord() {
-    return passWord;
-  }
-
-  public void setPassWord(String passWord) {
-    this.passWord = passWord;
-  }
-
-  public void setUserName(String userName) {
-    this.userName = userName;
-  }
-
-  @Override
   public String getPassword() {
+    return password;
+  }
 
-    return passWord;
+  public void setPassword(String passWord) {
+    this.password = passWord;
+  }
+
+  public void setUsername(String userName) {
+    this.username = userName;
   }
 
   @Override
   public String getUsername() {
 
-    return userName;
+    return username;
   }
 
   @Override
@@ -93,7 +87,7 @@ public class FileRepoDef extends DefaultRepoDef implements FileBasedRepo, Secure
   @Override
   public URI toURI() {
     URIBuilder builder = URIBuilder.create(URI.create(getUri()));
-    builder.setFileNameIfMissing(getFileName()).setPasswordIfMissing(getPassWord())
+    builder.setFileNameIfMissing(getFileName()).setPasswordIfMissing(getPassword())
         .setUsernameIfMissing(getUsername());
     return builder.build();
   }

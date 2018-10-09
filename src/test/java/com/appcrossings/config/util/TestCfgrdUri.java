@@ -11,17 +11,17 @@ public class TestCfgrdUri {
   public void testCfgrdPath() {
 
     URI uri = URI.create("cfgrd://repoName/path1/path2/path3");
-    uri = URI.create("cfgrd://userName:passWord@repoName/path1/path2/path3");
+    uri = URI.create("cfgrd://username:password@repoName/path1/path2/path3");
 
   }
   
   @Test
   public void testBasicUri() {
 
-    URI uri = URI.create("cfgrd://userName:passWord@testRepo/first/second/third");
+    URI uri = URI.create("cfgrd://username:password@testRepo/first/second/third");
 
     Assert.assertNotNull(uri);
-    Assert.assertEquals("userName:passWord", uri.getUserInfo());
+    Assert.assertEquals("username:password", uri.getUserInfo());
     Assert.assertEquals("testRepo", uri.getHost());
     Assert.assertEquals("/first/second/third", uri.getPath());
     Assert.assertEquals("cfgrd", uri.getScheme());
@@ -31,10 +31,10 @@ public class TestCfgrdUri {
   @Test
   public void testBasicUriWithoutPassword() {
 
-    URI uri = URI.create("cfgrd://userName@testRepo/first/second/third");
+    URI uri = URI.create("cfgrd://username@testRepo/first/second/third");
 
     Assert.assertNotNull(uri);
-    Assert.assertEquals("userName", uri.getUserInfo());
+    Assert.assertEquals("username", uri.getUserInfo());
     Assert.assertEquals("testRepo", uri.getHost());
     Assert.assertEquals("/first/second/third", uri.getPath());
     Assert.assertEquals("cfgrd", uri.getScheme());
@@ -44,11 +44,11 @@ public class TestCfgrdUri {
   @Test
   public void testFullCfgrdURI() {
 
-    CfgrdURI uri = new CfgrdURI(URI.create("cfgrd://userName:passWord@testRepo/first/second/third/file.properties"));
+    CfgrdURI uri = new CfgrdURI(URI.create("cfgrd://username:password@testRepo/first/second/third/file.properties"));
     Assert.assertEquals("/first/second/third/file.properties", uri.getPath());
     Assert.assertEquals("testRepo", uri.getRepoName());
-    Assert.assertEquals("userName", uri.getUserName());
-    Assert.assertEquals("passWord", uri.getPassword());
+    Assert.assertEquals("username", uri.getUserName());
+    Assert.assertEquals("password", uri.getPassword());
     Assert.assertTrue(uri.hasFile());
     Assert.assertEquals("file.properties", uri.getFileName());
 

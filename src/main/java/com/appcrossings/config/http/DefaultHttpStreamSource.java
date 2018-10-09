@@ -8,7 +8,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.appcrossings.config.processor.ProcessorSelector;
 import com.appcrossings.config.source.AdHocStreamSource;
+import com.appcrossings.config.source.PropertyPacket;
 import com.appcrossings.config.source.StreamPacket;
 import com.appcrossings.config.source.StreamSource;
 import com.appcrossings.config.util.StringUtils;
@@ -68,9 +70,9 @@ public class DefaultHttpStreamSource implements StreamSource, AdHocStreamSource 
 
   }
 
-  public Optional<StreamPacket> stream(URI uri) {
+  public Optional<PropertyPacket> stream(URI uri) {
 
-    Optional<StreamPacket> stream = Optional.empty();
+    Optional<PropertyPacket> stream = Optional.empty();
     Builder request = new Request.Builder().url(uri.toString()).get();
     log.debug(request.toString());
 
@@ -80,11 +82,11 @@ public class DefaultHttpStreamSource implements StreamSource, AdHocStreamSource 
 
     try (Response call = client.newCall(request.build()).execute()) {
 
-      if (call.isSuccessful() && !call.isRedirect()) {
+      if (call.isSuccessful() && !call.isRedirect() && call.body().contentLength() > 0) {
 
         StreamPacket packet = new StreamPacket(uri, call.body().byteStream());
         packet.setETag(call.header("ETag"));
-
+        packet.putAll(ProcessorSelector.process(uri.toString(), packet.bytes()));
         stream = Optional.of(packet);
 
       } else if (call.isSuccessful() && call.isRedirect()) {
@@ -122,8 +124,8 @@ public class DefaultHttpStreamSource implements StreamSource, AdHocStreamSource 
   }
 
   @Override
-  public Optional<StreamPacket> stream(String path) {
-    Optional<StreamPacket> is = Optional.empty();
+  public Optional<PropertyPacket> stream(String path) {
+    Optional<PropertyPacket> is = Optional.empty();
 
     if (builder != null) {
 
