@@ -87,4 +87,18 @@ public class PropertiesProcessor {
 
   }
 
+  public static String toText(Map<String, Object> map) {
+
+    StringBuilder builder = new StringBuilder();
+
+    if (!map.isEmpty()) {
+      map.forEach((k, v) -> {
+        if (v != null && k != null && k != "")
+          builder.append(k + "=" + v).append("\n");
+      });
+    }
+
+    return builder.toString();
+  }
+
 }

@@ -72,9 +72,16 @@ public class ConfigSourceResolver {
         repos = (LinkedHashMap) service.get("repos");
         for (Entry<String, Object> entry : repos.entrySet()) {
 
-          Optional<ConfigSource> cs = buildConfigSource(entry);
-          if (cs.isPresent())
-            reposByName.put(cs.get().getName().toLowerCase(), cs.get());
+          try {
+
+            Optional<ConfigSource> cs = buildConfigSource(entry);
+            if (cs.isPresent())
+              reposByName.put(cs.get().getName().toLowerCase(), cs.get());
+
+          } catch (Exception e) {
+            logger.error(e.getMessage());
+            // allow to continue loading other repos
+          }
 
         }
       }
